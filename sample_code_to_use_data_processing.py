@@ -3,7 +3,7 @@ from mooc_model import *
 from mooc_loader import *
 
 COURSE_NAME = 'DelftX_AE1110x_2T2015'
-DATA_DIR = '../../../mooc-data/'
+DATA_DIR = '../../mooc-data/'
 sample_log_file = '{}{}-events.log'.format(DATA_DIR, COURSE_NAME)
 sample_course_axis = '{}axis_{}.csv'.format(DATA_DIR, COURSE_NAME)
 sample_dataframe = '{}{}-events.lognavigation.csv'.format(DATA_DIR, COURSE_NAME)
@@ -68,9 +68,8 @@ print("Length of a sample sequence:", len(X[20]))
 
 
 print("Building keras model and attempting to train...")
-my_keras_model = MOOC_Keras_Model(my_verticals.vertical_index.max())
-
-my_keras_model.keras_model = my_keras_model.create_basic_transformer_model(lrate=2e-4, layers=4, embed_dim=128, seq_len=256)
+my_keras_model = MOOC_Keras_Model(my_verticals.pre_index_data.vertical_index.max())
+my_keras_model.create_basic_transformer_model(lrate=2e-4, layers=4, embed_dim=128, seq_len=256)
 my_keras_model.set_model_name('Baseline_Input_Output')
 
 hill_climbing_proportion = 0.1
@@ -78,7 +77,7 @@ hill_climbing_index = int(len(X) * (1 - hill_climbing_proportion))
 train_x, val_x = X[:hill_climbing_index], X[hill_climbing_index:]
 train_y, val_y = y[:hill_climbing_index], y[hill_climbing_index:]
 
-my_keras_model.transformer_model_fit(self, train_x, train_y, val_x, val_y, epoch_limit=100, batch_size=64)
+my_keras_model.transformer_model_fit(train_x, train_y, val_x, val_y, epoch_limit=100, batch_size=64)
 
 """
 my_keras_model.early_stopping_model_fit(train_x, train_y, (val_x, val_y), loss_nonimprove_limit = 3)

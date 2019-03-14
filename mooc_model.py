@@ -12,6 +12,7 @@ from keras.models import Model
 from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM, GRU
 from keras.layers.wrappers import TimeDistributed
+import keras.callbacks as callbacks
 
 from transformer_utils import load_optimizer_weights, CosineLRSchedule
 from transformer_models import vanilla_transformer_gpt_model
@@ -23,13 +24,13 @@ class MOOC_Keras_Model(object):
     def __init__(self, embedding_vocab_size):
         """
         """
-        self.keras_model = None
         self.X = None
         self.y = None
         self.padded_y_windows = None
+        self.model = None
         self.model_params = None
         self.model_histories = []
-        self.embedding_vocab_size = embedding_vocab_size
+        self.embedding_vocab_size = int(embedding_vocab_size) +1
         self.best_epoch = None
         self.previous_val_loss = []
 
@@ -60,7 +61,7 @@ class MOOC_Keras_Model(object):
         optimizer = Adam(lr=lrate, beta_1=0.9, beta_2=0.999, clipvalue=5.0)
         model = vanilla_transformer_gpt_model(
                 max_seq_length=seq_len,
-                vocabulary_size=self.embedding_vocab_size+1,
+                vocabulary_size=self.embedding_vocab_size,
                 word_embedding_size=embed_dim,
                 transformer_depth=layers,
                 num_heads=8)
@@ -71,12 +72,13 @@ class MOOC_Keras_Model(object):
             load_optimizer_weights(model, model_load_path)
             print('Old model from {} successfully loaded.\n'.format(model_load_path))
             model.summary()
-            return model
+            self.model = model
+            return
         
         print('Compiled new model.\n')
         print('-'*80)
         model.summary()
-        return model
+        self.model = model
 
     def create_basic_lstm_model(self, layers, lrate, hidden_size, opt, embed_dim, seq_len, model_save_path=None):
         """
@@ -104,19 +106,20 @@ class MOOC_Keras_Model(object):
             load_optimizer_weights(model, model_save_path)
             print('Old model from {} successgully loaded.\n'.format(model_save_path))
             model.summary()
-            return model
+            self.model = model
+            return
 
         print('Compiled new model.\n')
         print('-'*80)
         model.summary()
-        return model
+        self.model = model
 
     def transformer_model_fit(self, train_x, train_y, val_x, val_y, epoch_limit=100, batch_size=64, model_save_path=None, tensorboard_log_path=None):
 
         assert self.model_params is not None
 
         lr_scheduler = callbacks.LearningRateScheduler(
-            CosineLRSchedule(lr_high=self.model_params.lrate, lr_low=self.model_params.lrate / 32, initial_period=epoch_limit),
+            CosineLRSchedule(lr_high=self.model_params['lrate'], lr_low=self.model_params['lrate'] / 32, initial_period=epoch_limit),
             verbose=1)
         model_callbacks = [lr_scheduler]
         
@@ -125,11 +128,11 @@ class MOOC_Keras_Model(object):
         if tensorboard_log_path is not None:
             model_callbacks.append(callbacks.TensorBoard(tensorboard_log_path))
         
-        model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=batch_size, epochs=epoch_limit, callbacks=model_callbacks)
+        self.model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=batch_size, epochs=epoch_limit, callbacks=model_callbacks)
 
         # Evaluation using test set
         print('-' * 80)
-        test_metrics = model.evaluate(val_x, val_y, batch_size=batch_size)
+        test_metrics = self.model.evaluate(val_x, val_y, batch_size=batch_size)
         for metric_name, metric_value in zip(model.metrics_names, test_metrics):
             print('Test {}: {.6f}'.format(metric_name, metric_value))
 
@@ -139,7 +142,7 @@ class MOOC_Keras_Model(object):
         early_stopping_met = False
         for i in range(epoch_limit):
             print("epoch:", i)
-            current_history = self.keras_model.fit(train_x, train_y, batch_size = batch_size, nb_epoch = 1, validation_data = validation_data)
+            current_history = self.model.fit(train_x, train_y, batch_size = batch_size, nb_epoch = 1, validation_data = validation_data)
             current_history = current_history.history
             validation_loss = current_history['val_loss'][0]
             validation_accuracy_dictionary = self.compute_validation_accuracy(validation_data, b_s = batch_size)
@@ -171,7 +174,7 @@ class MOOC_Keras_Model(object):
         if isinstance(validation_x, list):
             just_x_indices = validation_x[0]
         
-        predictions = self.keras_model.predict(validation_x, batch_size = b_s)
+        predictions = self.model.predict(validation_x, batch_size = b_s)
 
         per_student_accuracies = np.zeros(len(just_x_indices))
         total_correct_predictions = 0
@@ -197,6 +200,6 @@ class MOOC_Keras_Model(object):
         for i in range(epochs):
             print("epoch:", i)
             validation_i = int(len(self.X) * .9)
-            hist = self.keras_model.fit(self.X[:validation_i], self.y[:validation_i], batch_size = batch_size, nb_epoch = 1, validation_data = (self.X[validation_i:], self.y[validation_i:]))
+            hist = self.model.fit(self.X[:validation_i], self.y[:validation_i], batch_size = batch_size, nb_epoch = 1, validation_data = (self.X[validation_i:], self.y[validation_i:]))
             self.model_histories.append(hist)
 """

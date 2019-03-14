@@ -142,11 +142,8 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
         X = sequence.pad_sequences(x_windows, maxlen=max_len, padding='post', truncating='post')
         padded_y_windows = sequence.pad_sequences(y_windows, maxlen=max_len, padding='post', truncating='post')
         self.padded_y_windows = padded_y_windows
-        y = np.zeros((len(padded_y_windows), max_len, int(self.pre_index_data.vertical_index.max())), dtype=np.bool)
+        y = np.zeros((len(padded_y_windows), max_len, int(self.pre_index_data.vertical_index.max() +1)), dtype=np.bool)
         for i, output in enumerate(padded_y_windows):
-            for t, resource_index in enumerate(output):
-                if resource_index == 0:
-                    continue
-                else:
-                    y[int(i), int(t), int(resource_index)-1] = 1
+            for t, vert_index in enumerate(output):
+                y[int(i), int(t), int(vert_index)] = 1
         return X, y
