@@ -114,7 +114,7 @@ class MOOC_Keras_Model(object):
         model.summary()
         self.model = model
 
-    def transformer_model_fit(self, train_x, train_y, val_x, val_y, epoch_limit=100, batch_size=64, model_save_path=None, tensorboard_log_path=None):
+    def transformer_model_fit(self, train_x, train_y, val_x, val_y, test_x, test_y, epoch_limit=100, batch_size=64, model_save_path=None, tensorboard_log_path=None):
 
         assert self.model_params is not None
 
@@ -132,7 +132,7 @@ class MOOC_Keras_Model(object):
 
         # Evaluation using test set
         print('-' * 80)
-        test_metrics = self.model.evaluate(val_x, val_y, batch_size=batch_size)
+        test_metrics = self.model.evaluate(test_x, test_y, batch_size=batch_size)
         for metric_name, metric_value in zip(model.metrics_names, test_metrics):
             print('Test {}: {.6f}'.format(metric_name, metric_value))
 
