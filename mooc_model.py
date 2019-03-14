@@ -13,8 +13,8 @@ from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM, GRU
 from keras.layers.wrappers import TimeDistributed
 
-from keras_transformer.utils import load_optimizer_weights, CosineLRSchedule
-from keras_transformer.models import vanilla_transformer_gpt_model
+from transformer_utils import load_optimizer_weights, CosineLRSchedule
+from transformer_models import vanilla_transformer_gpt_model
 
 class MOOC_Keras_Model(object):
     """
