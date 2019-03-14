@@ -2,6 +2,8 @@ import datetime
 import json
 import numpy as np
 import keras
+import os
+
 from keras.preprocessing import sequence
 from keras.optimizers import SGD, RMSprop, Adagrad, Adam
 from keras.utils import np_utils
@@ -48,7 +50,7 @@ class MOOC_Keras_Model(object):
     def model_params_to_string(self):
         return '_{layers!s}_{seq_len!s}_{embed_dim!s}_{e_vocab_size!s}_{lrate!s}'.format(**self.model_params)
 
-    def create_basic_transformer_model(self, lrate, layers=4, embed_dim=128, seq_len=256, model_load_path=None):
+    def create_basic_transformer_model(self, lrate=2e-3, layers=4, embed_dim=128, seq_len=256, model_load_path=None):
         """
         Returns a Vanilla Transformer model
         """
@@ -80,7 +82,7 @@ class MOOC_Keras_Model(object):
         model.summary()
         self.model = model
 
-    def create_basic_lstm_model(self, layers, lrate, hidden_size, opt, embed_dim, seq_len, model_save_path=None):
+    def create_basic_lstm_model(self, lrate=0.01, opt=Adagrad, layers=2, hidden_size=128, embed_dim=128, seq_len=256, model_load_path=None):
         """
         Returns a LSTM model
         """
@@ -93,18 +95,19 @@ class MOOC_Keras_Model(object):
             'opt': opt}
 
         main_input = Input(shape=(seq_len,), name='main_input', dtype='int32')
-        x = Embedding(input_dim=self.embedding_vocab_size+1, output_dim=embed_dim, input_length=seq_len, mask_zero=True)(main_input)
+        x = Embedding(input_dim=self.embedding_vocab_size, output_dim=embed_dim, input_length=seq_len, mask_zero=True)(main_input)
         for i in range(layers):
-            print("adding layer " + str(i))
-            x = LSTM(hidden_size, dropout_W = 0.2, return_sequences = True)(x)
-        main_loss = TimeDistributed(Dense(embedding_vocab_size, activation='softmax'))(x)
-        model = Model(input=[main_input], output = [main_loss])
-        model.compile(loss='categorical_crossentropy', optimizer=opt(lr=lrate), metrics=['accuracy'])
+            print("Adding layer: " + str(i))
+            x = LSTM(hidden_size, dropout=0.2, return_sequences=True)(x)
+        main_loss = TimeDistributed(Dense(self.embedding_vocab_size, activation='softmax'))(x)
+        
+        model = Model(inputs=[main_input], outputs=[main_loss])
+        model.compile(optimizer=opt(lr=lrate), loss='categorical_crossentropy', metrics=['accuracy'])
 
-        if model_save_path is not None and os.path.exists(model_save_path):
-            model.load_weights(model_save_path, skip_mismatch=True, by_name=True)
-            load_optimizer_weights(model, model_save_path)
-            print('Old model from {} successgully loaded.\n'.format(model_save_path))
+        if model_load_path is not None and os.path.exists(model_load_path):
+            model.load_weights(model_load_path, skip_mismatch=True, by_name=True)
+            load_optimizer_weights(model, model_load_path)
+            print('Old model from {} succesfgully loaded.\n'.format(model_load_path))
             model.summary()
             self.model = model
             return
@@ -119,7 +122,7 @@ class MOOC_Keras_Model(object):
         assert self.model_params is not None
 
         lr_scheduler = callbacks.LearningRateScheduler(
-            CosineLRSchedule(lr_high=self.model_params['lrate'], lr_low=self.model_params['lrate'] / 32, initial_period=epoch_limit),
+            CosineLRSchedule(lr_high=self.model_params['lrate'], lr_low=self.model_params['lrate'] / 32, initial_period=3),
             verbose=1)
         model_callbacks = [lr_scheduler]
         
@@ -133,21 +136,26 @@ class MOOC_Keras_Model(object):
         # Evaluation using test set
         print('-' * 80)
         test_metrics = self.model.evaluate(test_x, test_y, batch_size=batch_size)
-        for metric_name, metric_value in zip(model.metrics_names, test_metrics):
-            print('Test {}: {.6f}'.format(metric_name, metric_value))
+        for metric_name, metric_value in zip(self.model.metrics_names, test_metrics):
+            print('Test {}: {:.8f}'.format(metric_name, metric_value))
 
-    def early_stopping_model_fit(self, train_x, train_y, validation_data, epoch_limit = 200, loss_nonimprove_limit = 3, batch_size=64, save_models_to_folder = None):
-        """
-        """
+    def early_stopping_model_fit(self, train_x, train_y, val_x, val_y, epoch_limit=200, loss_nonimprove_limit=3, batch_size=64, model_save_path=None, tensorboard_log_path=None):
+        
+        assert self.model_params is not None
+
+        model_callbacks = []
+        if model_save_path is not None:
+            model_callbacks.append(callbacks.ModelCheckpoint(model_save_path, monitor='val_loss', save_best_only=True, verbose=True))
+        if tensorboard_log_path is not None:
+            model_callbacks.append(callbacks.TensorBoard(tensorboard_log_path))
+
         early_stopping_met = False
         for i in range(epoch_limit):
-            print("epoch:", i)
-            current_history = self.model.fit(train_x, train_y, batch_size = batch_size, nb_epoch = 1, validation_data = validation_data)
+            print("Epoch: ", i)
+            current_history = self.model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=batch_size, epochs=1)
             current_history = current_history.history
-            validation_loss = current_history['val_loss'][0]
-            validation_accuracy_dictionary = self.compute_validation_accuracy(validation_data, b_s = batch_size)
-            average_of_average_accuracy = np.mean(validation_accuracy_dictionary['averages'])
-            accuracy = validation_accuracy_dictionary['accuracy']
+            validation_loss, validation_accuracy = current_history['val_loss'][0], current_history['val_acc'][0]
+            #average_of_average_accuracy = np.mean(validation_accuracy_dictionary['averages'])
             self.previous_val_loss.append(validation_loss)
             if len(self.previous_val_loss) > loss_nonimprove_limit:
                 min_val_loss = min(self.previous_val_loss)
@@ -157,43 +165,14 @@ class MOOC_Keras_Model(object):
                     early_stopping_met = True
                 if validation_loss == min_val_loss:
                     self.best_epoch = i
-                    self.best_average_of_average_accuracy = average_of_average_accuracy
-                    self.best_accuracy = accuracy
+                    #self.best_average_of_average_accuracy = average_of_average_accuracy
+                    self.best_accuracy = validation_accuracy
             if early_stopping_met:
                 print("Early stopping reached.")
                 print("Best epoch according to validation loss:", self.best_epoch)
                 print("Best epoch's accuracy:", self.best_accuracy)
-                print("Best epoch's average accuracy:", self.best_average_of_average_accuracy)
+                #print("Best epoch's average accuracy:", self.best_average_of_average_accuracy)
                 return
-
-    def compute_validation_accuracy(self, validation_data, b_s = 64):
-        """
-        """
-        validation_x, validation_y = validation_data
-        just_x_indices = validation_x
-        if isinstance(validation_x, list):
-            just_x_indices = validation_x[0]
-        
-        predictions = self.model.predict(validation_x, batch_size = b_s)
-
-        per_student_accuracies = np.zeros(len(just_x_indices))
-        total_correct_predictions = 0
-        
-        for student_sequence_index, current_x in enumerate(just_x_indices):
-            current_studen_preds = np.max(predictions[student_sequence_index], axis=-1)
-            current_student_correct = np.count_nonzero(np.where(current_studen_preds == validation_y[student_sequence_index]))
-            total_predictions += current_student_correct
-            total_correct_predictions += len(validation_y[student_sequence_index])
-            acc = float(current_student_correct) / len(validation_y[student_sequence_index])
-            per_student_accuracies[current_x] = acc
-
-        total_val_acc = float(total_correct_predictions) / total_predictions
-        print("Total validation accuracy:", total_val_acc)
-        print("Average accuracy:", np.mean(per_student_accuracies))
-        return_dict = {}
-        return_dict['accuracy'] = total_val_acc
-        return_dict['averages'] = per_student_accuracies
-        return return_dict
 
 """
     def simple_model_fit(self, epochs = 10, batch_size = 64, validation_proportion = 0.1):
