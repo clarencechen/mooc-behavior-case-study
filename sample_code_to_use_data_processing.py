@@ -2,86 +2,54 @@ from data_processing import *
 from mooc_model import *
 from mooc_loader import *
 
-COURSE_NAME = 'DelftX_AE1110x_2T2015'
+COURSE_NAMES = ['DelftX_AE1110x_2T2015', \
+'BerkeleyX_BJC.3x_1T2016', 'BerkeleyX_ColWri2.3x_1T2016', 'BerkeleyX_ColWri.3.12x_1T2016', 'BerkeleyX_ColWri3.3x_2T2016', 'BerkeleyX_EE40LX_2T2015', \
+'BerkeleyX_BJC.4x_1T2016', 'BerkeleyX_ColWri.3.10_1T2016', 'BerkeleyX_ColWri3.1x_2_3T2015', 'BerkeleyX_ColWri3.4x_1T2015', 'BerkeleyX_Fin101x_1T2016', \
+'BerkeleyX_ColWri2.2x_1T2016', 'BerkeleyX_ColWri.3.11_1T2016', 'BerkeleyX_ColWri3.2x_2T2016', 'BerkeleyX_CS169.2x_1T2016', 'BerkeleyX_Policy01x_1T2016']
 DATA_DIR = '../../mooc-data/'
-sample_log_file = '{}{}-events.log'.format(DATA_DIR, COURSE_NAME)
-sample_course_axis = '{}axis_{}.csv'.format(DATA_DIR, COURSE_NAME)
-sample_dataframe = '{}{}-events.lognavigation.csv'.format(DATA_DIR, COURSE_NAME)
-sample_preindex = '{}{}_parsed_v2.tsv'.format(DATA_DIR, COURSE_NAME)
+dataset_names = ['{}{}_parsed_v2.tsv'.format(DATA_DIR, course) for course in COURSE_NAMES]
+sequence_max_len = 256
 
-#This is some sample code for using the work-in-progress MOOC data processing code.
-#Fundamentally, the code is just to help the user make sense of the different levels of abstraction between raw MOOC data and running a model to answer a research question.
-
-
-#Step 1: Parsing from Log data to a Pandas DataFrame
-#Filter log events as desired for research question
-"""
-print("Reading in sample log file:", sample_log_file)
-my_data = MOOC_Data_From_Log(sample_log_file, sample_course_axis)
-
-print("len of data:", len(my_data.sorted_data))
-
-my_data.sorted_data = my_data.filter_data_problem_check()
-my_data.sorted_data = my_data.filter_data_navigation_only()
-my_data.sorted_data = my_data.filter_data_by_time()
-my_data.output_to_disk("delft2T2015dataframefiltered.csv")
-"""
-
-#Step 1: load dataframe from disk
-
-"""
-my_data = MOOC_Data_From_Disk(dataframe, axis_file)
-
-#Step 2: Bridge between log events and tokenized indices. 
-#Continue to filter data as needed for research question, but now at the numpy array level for input to Keras.
-
-my_verticals = Vertical_Output(my_data)
-print(len(my_verticals.mooc_data.sorted_data))
-
-my_verticals.populate_mappings_based_on_verticals_in_course_axis()
-my_verticals.populate_pre_index_data()
-print('length of pre index data', len(my_verticals.pre_index_data))
-#print(my_verticals.pre_index_data.columns)
-#print(my_verticals.pre_index_data.loc[0])
-#print(my_verticals.pre_index_data.loc[0].vertical_url)
-my_verticals.pre_index_data = my_verticals.remove_contiguous_repeats_from_pre_index_data()
-my_verticals.pre_index_data.to_csv(sample_dataframe)
-
-"""
-#Can read pre index data from disk if saved previously
-
-my_verticals = Vertical_Output(sample_preindex)
-
+my_verticals = Vertical_Output(dataset_names[0])
 my_verticals.current_full_indices, my_verticals.current_full_indices_userids = my_verticals.create_full_indices_based_on_pre_index_data_ignoring_time_spent()
 my_verticals.prepend_1_to_current_full_indices()
 
-print("Len of full indices:", len(my_verticals.current_full_indices))
-print("Example sequence:", my_verticals.current_full_indices[5])
+print("Number of users registered: ", len(my_verticals.current_full_indices))
+print("Example sequence for student 5: ", my_verticals.current_full_indices[5])
 
-sequence_max_len = 256
 X, y = my_verticals.expose_x_y(max_len=sequence_max_len)
 print("Length of exposed X:", len(X))
 print("Length of a sample sequence:", len(X[20]))
 
-
 #Step 3: Build a Keras LSTM Model and train on data from the Step 2 Bridge.
-
 
 print("Building keras model and attempting to train...")
 my_keras_model = MOOC_Keras_Model(my_verticals.pre_index_data.vertical_index.max())
 
-#my_keras_model.create_basic_transformer_model(lrate=2e-3, layers=4, embed_dim=128, seq_len=256, model_load_path='transformer_weights')
-my_keras_model.create_basic_lstm_model(lrate=2e-4, layers=2, hidden_size=128, embed_dim=128, seq_len=256)
+my_keras_model.create_basic_transformer_model(lrate=2e-3, layers=4, embed_dim=128, seq_len=256, model_load_path='transformer_weights')
+#my_keras_model.create_basic_lstm_model(lrate=0.02, layers=2, hidden_size=128, embed_dim=128, seq_len=256)
 
 my_keras_model.set_model_name('Baseline_Input_Output')
 
-train_proportion, test_proportion = 0.8, 0.1
-train_index, test_index = int(len(X)*train_proportion), int(len(X)*(train_proportion +test_proportion))
-train_x, test_x, val_x = X[:train_index], X[train_index:test_index], X[test_index:]
-train_y, test_y, val_y = y[:train_index], y[train_index:test_index], y[test_index:]
+train_proportion = 0.9
+train_index = int(len(X)*train_proportion)
+train_x, val_x = X[:train_index], X[train_index:]
+train_y, val_y = y[:train_index], y[train_index:]
 
-#my_keras_model.transformer_model_fit(train_x, train_y, val_x, val_y, test_x, test_y, epoch_limit=10, batch_size=128, model_save_path='transformer_weights', tensorboard_log_path='tensorboard_logs')
+my_keras_model.transformer_model_fit(train_x, train_y, val_x, val_y, epoch_limit=5, batch_size=128, model_save_path='transformer_weights', tensorboard_log_path='tensorboard_logs')
 
-my_keras_model.early_stopping_model_fit(train_x, train_y, val_x, val_y, loss_nonimprove_limit = 3)
+'''
+for i in range(1, len(COURSE_NAMES)):
+	test_verticals = Vertical_Output(dataset_names[1])
+	test_verticals.current_full_indices, test_verticals.current_full_indices_userids = test_verticals.create_full_indices_based_on_pre_index_data_ignoring_time_spent()
+	test_verticals.prepend_1_to_current_full_indices()
+	print("Number of users registered: ", len(my_verticals.current_full_indices))
+	print("Example sequence for student 5: ", my_verticals.current_full_indices[5])
+	test_x, test_y = my_verticals.expose_x_y(max_len=sequence_max_len)
+	print("Testing model on the following dataset: {}".format(COURSE_NAMES[i]))
+	my_keras_model.transformer_model_fit(test_x, test_y, batch_size=128)
+'''
+
+#my_keras_model.early_stopping_model_fit(train_x, train_y, val_x, val_y, loss_nonimprove_limit = 3)
 
 #Step 4: Build a recommendation oracle or other downstream task that utilizes the keras model.

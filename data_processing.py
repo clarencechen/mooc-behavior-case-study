@@ -30,7 +30,7 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
     Outputs X y used to train model, along with vocab_size for keras model.
     """
     def __init__(self, input_file):
-        raw_data = pd.read_csv(input_file, delimiter='\t', usecols=['username', 'vertical_index', 'basic_type', 'time'])
+        raw_data = pd.read_csv(input_file, delimiter='\t', usecols=['username', 'vertical_index', 'vertical_title', 'basic_type', 'time'])
         seq_rows = raw_data[raw_data['basic_type'].isin(['seq_goto', 'seq_next', 'seq_prev'])]
 
         self.pre_index_data = seq_rows.sort_values('time')
@@ -40,7 +40,15 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
 
     def populate_time_spent_in_pre_index_data(self):
         return NotImplementedError
-    
+    '''
+    def create_vertical_index_to_title_mapping(self):
+        vertical_index_to_title = {}
+        grouped_by_title = self.pre_index_data.groupby('vertical_title')
+        for title, data in grouped_by_title:
+            if title not in vertical_index_to_title:
+                vertical_index_to_title[title] = data.vertical_index[0]
+        self.vertical_index_to_title = vertical_index_to_title
+    '''
     def create_full_indices_based_on_pre_index_data_ignoring_time_spent(self):
         """
         Returns pre_index_data mapped to indices (list of lists), as well as corresponding list of user ids

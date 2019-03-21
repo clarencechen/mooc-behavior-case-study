@@ -107,7 +107,7 @@ class MOOC_Keras_Model(object):
         if model_load_path is not None and os.path.exists(model_load_path):
             model.load_weights(model_load_path, skip_mismatch=True, by_name=True)
             load_optimizer_weights(model, model_load_path)
-            print('Old model from {} succesfgully loaded.\n'.format(model_load_path))
+            print('Old model from {} successfully loaded.\n'.format(model_load_path))
             model.summary()
             self.model = model
             return
@@ -117,9 +117,10 @@ class MOOC_Keras_Model(object):
         model.summary()
         self.model = model
 
-    def transformer_model_fit(self, train_x, train_y, val_x, val_y, test_x, test_y, epoch_limit=100, batch_size=64, model_save_path=None, tensorboard_log_path=None):
+    def transformer_model_fit(self, train_x, train_y, val_x, val_y, epoch_limit=5, batch_size=64, model_save_path=None, tensorboard_log_path=None):
 
-        assert self.model_params is not None
+        assert self.model_params is not None, 'Please create model before training'
+        print('Training model with params: {}'.format(self.model_params))
 
         lr_scheduler = callbacks.LearningRateScheduler(
             CosineLRSchedule(lr_high=self.model_params['lrate'], lr_low=self.model_params['lrate'] / 32, initial_period=3),
@@ -127,15 +128,27 @@ class MOOC_Keras_Model(object):
         model_callbacks = [lr_scheduler]
         
         if model_save_path is not None:
-            model_callbacks.append(callbacks.ModelCheckpoint(model_save_path, monitor='val_loss', save_best_only=True, verbose=True))
+            model_callbacks.append(callbacks.ModelCheckpoint(model_save_path, monitor='val_loss', save_best_only=True, verbose=1))
         if tensorboard_log_path is not None:
-            model_callbacks.append(callbacks.TensorBoard(tensorboard_log_path))
-        
+            model_callbacks.append(callbacks.TensorBoard(tensorboard_log_path, \
+                histogram_freq=1, batch_size=batch_size, write_grads=True, write_images=True, \
+                embeddings_freq=epoch_limit, embeddings_layer_names='bpe_embeddings', embeddings_data=np.arange(self.embedding_vocab_size)))
+
         self.model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=batch_size, epochs=epoch_limit, callbacks=model_callbacks)
 
-        # Evaluation using test set
-        print('-' * 80)
-        test_metrics = self.model.evaluate(test_x, test_y, batch_size=batch_size)
+    def transformer_model_eval(self, test_x, test_y, batch_size=64, tensorboard_log_path=None):
+        '''
+        Evaluate model using test set
+        '''
+        assert self.model_params is not None, 'Please create model before testing'
+        print('Testing model with params: {}'.format(self.model_params))
+
+        model_callbacks = []
+
+        if tensorboard_log_path is not None:
+            model_callbacks.append(callbacks.TensorBoard(tensorboard_log_path))
+
+        test_metrics = self.model.evaluate(test_x, test_y, batch_size=batch_size, callbacks=model_callbacks)
         for metric_name, metric_value in zip(self.model.metrics_names, test_metrics):
             print('Test {}: {:.8f}'.format(metric_name, metric_value))
 
