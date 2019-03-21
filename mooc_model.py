@@ -16,8 +16,38 @@ from keras.layers.recurrent import LSTM, GRU
 from keras.layers.wrappers import TimeDistributed
 import keras.callbacks as callbacks
 
+from keras_transformer.extras import ReusableEmbedding, TiedOutputEmbedding
 from transformer_utils import load_optimizer_weights, CosineLRSchedule
 from transformer_models import vanilla_transformer_gpt_model
+
+def build_finetune_model(old_model, model_params, freeze_layers=False):
+    
+    # freeze all relevant layers of old model
+    if freeze_layers:
+        for layer in old_model.layers[2:-2]:
+            layer.trainable = False
+
+    # build new finetuning layers
+    reg = regularizers.l2(1e-4)
+    new_course_ids = Input(shape=(model_params['seq_len'],), dtype='int32', name='new_ids')
+    new_embedding = ReusableEmbedding(model_params['e_vocab_size'], model_params['embed_dim'], input_length=model_params['seq_len'], \
+        name='new_embeddings', embeddings_regularizer=reg)
+    
+    new_tied_disembedding = TiedOutputEmbedding(projection_regularizer=reg, projection_dropout=0.6, name='new_embedding_logits')
+    new_softmax = Softmax(name='new_predictions')
+
+    # connect new finetuning layers
+    fed_input, new_embedding_matrix = new_embedding(word_ids)
+    fed_output = old_model.layers[2:-2](fed_input)
+    new_predictions = new_softmax(new_tied_disembedding([fed_output, new_embedding_matrix]))
+
+    # build and compule new model
+    finetune_model = Model(inputs=[new_course_ids], outputs=[new_predictions])
+    optimizer = Adam(lr=model_params['lrate'], beta_1=0.9, beta_2=0.999, clipvalue=5.0)
+    finetune_model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+    print('Finetuned model compiled successfully.\n')
+    finetune_model.summary()
+    return finetune_model
 
 class MOOC_Keras_Model(object):
     """
@@ -57,7 +87,6 @@ class MOOC_Keras_Model(object):
             'seq_len': seq_len,
             'lrate': lrate}
 
-        optimizer = Adam(lr=lrate, beta_1=0.9, beta_2=0.999, clipvalue=5.0)
         model = vanilla_transformer_gpt_model(
                 max_seq_length=seq_len,
                 vocabulary_size=self.embedding_vocab_size,
@@ -65,8 +94,10 @@ class MOOC_Keras_Model(object):
                 transformer_depth=layers,
                 num_heads=8)
 
+        optimizer = Adam(lr=lrate, beta_1=0.9, beta_2=0.999, clipvalue=5.0)
         model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
-
+        
+        # load model weights if specified
         if model_load_path is not None and os.path.exists(model_load_path):
             model.load_weights(model_load_path, skip_mismatch=True, by_name=True)
             load_optimizer_weights(model, model_load_path)
@@ -74,11 +105,41 @@ class MOOC_Keras_Model(object):
             model.summary()
             self.model = model
             return
-        
-        print('Model compiled successfully; will train new weights.\n')
+
+        print('Model compiled successfully; Model summary below:')
         print('-'*80)
         model.summary()
         self.model = model
+
+    def crate_finetune_transformer_model(self, model_load_path, old_embedding_size, lrate=2e-3, layers=4, embed_dim=128, seq_len=256, freeze_layers=False):
+        """
+        Loads Vanilla Transformer model for finetuning on a new dataset
+        """
+        self.model_params = {'layers': layers,
+            'embed_dim': embed_dim,
+            'e_vocab_size': self.embedding_vocab_size,
+            'seq_len': seq_len,
+            'lrate': lrate}
+
+        old_model = vanilla_transformer_gpt_model(
+                max_seq_length=seq_len,
+                vocabulary_size=old_embedding_size,
+                word_embedding_size=embed_dim,
+                transformer_depth=layers,
+                num_heads=8)
+
+        optimizer = Adam(lr=lrate, beta_1=0.9, beta_2=0.999, clipvalue=5.0)
+        old_model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+        
+        # load model weights if specified
+        if os.path.exists(model_load_path):
+            model.load_weights(model_load_path, skip_mismatch=True, by_name=True)
+            load_optimizer_weights(old_model, model_load_path)
+            print('Old model weights from {} successfully loaded.\n'.format(model_load_path))
+        else:
+            raise FileNotFoundError, 'Please specify a valid model_load_path to load pretrained weights.'
+
+        self.model = build_finetune_model(old_model, self.model_params, freeze_layers)
 
     def create_basic_lstm_model(self, lrate=0.01, opt=Adagrad, layers=2, hidden_size=128, embed_dim=128, seq_len=256, model_load_path=None):
         """
@@ -90,7 +151,7 @@ class MOOC_Keras_Model(object):
             'e_vocab_size': self.embedding_vocab_size,
             'seq_len': seq_len,
             'lrate': lrate,
-            'opt': opt}
+            'optimizer': opt}
 
         main_input = Input(shape=(seq_len,), name='main_input', dtype='int32')
         x = Embedding(input_dim=self.embedding_vocab_size, output_dim=embed_dim, input_length=seq_len, mask_zero=True)(main_input)
@@ -102,6 +163,7 @@ class MOOC_Keras_Model(object):
         model = Model(inputs=[main_input], outputs=[main_loss])
         model.compile(optimizer=opt(lr=lrate), loss='categorical_crossentropy', metrics=['accuracy'])
 
+        # load model weights if specified
         if model_load_path is not None and os.path.exists(model_load_path):
             model.load_weights(model_load_path, skip_mismatch=True, by_name=True)
             load_optimizer_weights(model, model_load_path)
@@ -110,7 +172,7 @@ class MOOC_Keras_Model(object):
             self.model = model
             return
 
-        print('Model compiled successfully; will train new weights.\n')
+        print('Model compiled successfully; will train from new initialization.\n')
         print('-'*80)
         model.summary()
         self.model = model
@@ -133,19 +195,6 @@ class MOOC_Keras_Model(object):
 
         self.model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=batch_size, epochs=epoch_limit, callbacks=model_callbacks)
 
-    def transformer_model_finetune(self, train_x, train_y, val_x, val_y, epoch_limit=5, batch_size=64, model_save_path=None, tensorboard_log_path=None):
-        assert self.model_params is not None, 'Please create model before training'
-        print('Fine-tuning model with params: {}'.format(self.model_params))
-        
-        #freeze all other layers
-        for layer in self.model.layers:
-            if layer.name != 'bpe_embeddings':
-                layer.trainable = False
-        #recompile model
-        self.model.compile(optimizer=opt(lr=lrate), loss='categorical_crossentropy', metrics=['accuracy'])
-        self.model.summary()
-        self.model.transformer_model_fit(train_x, train_y, val_x, val_y, epoch_limit, batch_size, model_save_path, tensorboard_log_path)
-
     def transformer_model_eval(self, test_x, test_y, batch_size=64, tensorboard_log_path=None):
         '''
         Evaluate model using test set
@@ -158,7 +207,7 @@ class MOOC_Keras_Model(object):
         if tensorboard_log_path is not None:
             model_callbacks.append(callbacks.TensorBoard(tensorboard_log_path))
 
-        test_metrics = self.model.evaluate(test_x, test_y, batch_size=batch_size, callbacks=model_callbacks)
+        test_metrics = self.model.evaluate(test_x, test_y, batch_size=batch_size)
         for metric_name, metric_value in zip(self.model.metrics_names, test_metrics):
             print('Test {}: {:.8f}'.format(metric_name, metric_value))
 
