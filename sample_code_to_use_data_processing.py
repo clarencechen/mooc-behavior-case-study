@@ -27,7 +27,7 @@ print("Building keras model and attempting to train...")
 my_keras_model = MOOC_Keras_Model(my_verticals.pre_index_data.vertical_index.max())
 
 my_keras_model.create_basic_transformer_model(lrate=2e-3, layers=4, embed_dim=128, seq_len=256, model_load_path='transformer_weights')
-#my_keras_model.create_basic_lstm_model(lrate=0.02, layers=2, hidden_size=128, embed_dim=128, seq_len=256)
+#my_keras_model.create_basic_lstm_model(lrate=2e-3, layers=2, hidden_size=128, embed_dim=128, seq_len=256)
 
 my_keras_model.set_model_name('Baseline_Input_Output')
 
@@ -36,7 +36,7 @@ train_index = int(len(X)*train_proportion)
 train_x, val_x = X[:train_index], X[train_index:]
 train_y, val_y = y[:train_index], y[train_index:]
 
-my_keras_model.transformer_model_fit(train_x, train_y, val_x, val_y, epoch_limit=5, batch_size=128, model_save_path='transformer_weights', tensorboard_log_path='tensorboard_logs')
+my_keras_model.transformer_model_fit(train_x, train_y, val_x, val_y, epoch_limit=20, batch_size=128, model_save_path='transformer_weights', tensorboard_log_path='tensorboard_logs')
 
 '''
 for i in range(1, len(COURSE_NAMES)):

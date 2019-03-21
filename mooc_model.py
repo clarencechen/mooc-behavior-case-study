@@ -6,7 +6,7 @@ import os
 
 from keras.preprocessing import sequence
 from keras.optimizers import SGD, RMSprop, Adagrad, Adam
-from keras.utils import np_utils
+from keras.utils import np_utils, multi_gpu_model
 from keras.models import Sequential, load_model
 from keras.layers.core import Dense, Dropout, Activation
 from keras.layers import Input
@@ -26,9 +26,6 @@ class MOOC_Keras_Model(object):
     def __init__(self, embedding_vocab_size):
         """
         """
-        self.X = None
-        self.y = None
-        self.padded_y_windows = None
         self.model = None
         self.model_params = None
         self.model_histories = []
@@ -42,7 +39,7 @@ class MOOC_Keras_Model(object):
     
     def set_model_name(self, name):
         if not self.model_params:
-            print("WARNING: Create LSTM model before setting model name.")
+            print("WARNING: Create LSTM/Transformer model before setting model name.")
             return -1
         self.model_name = name + self.model_params_to_string
 
@@ -67,6 +64,7 @@ class MOOC_Keras_Model(object):
                 word_embedding_size=embed_dim,
                 transformer_depth=layers,
                 num_heads=8)
+
         model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
         if model_load_path is not None and os.path.exists(model_load_path):
@@ -77,7 +75,7 @@ class MOOC_Keras_Model(object):
             self.model = model
             return
         
-        print('Compiled new model.\n')
+        print('Model compiled successfully; will train new weights.\n')
         print('-'*80)
         model.summary()
         self.model = model
@@ -112,7 +110,7 @@ class MOOC_Keras_Model(object):
             self.model = model
             return
 
-        print('Compiled new model.\n')
+        print('Model compiled successfully; will train new weights.\n')
         print('-'*80)
         model.summary()
         self.model = model
@@ -123,7 +121,7 @@ class MOOC_Keras_Model(object):
         print('Training model with params: {}'.format(self.model_params))
 
         lr_scheduler = callbacks.LearningRateScheduler(
-            CosineLRSchedule(lr_high=self.model_params['lrate'], lr_low=self.model_params['lrate'] / 32, initial_period=3),
+            CosineLRSchedule(lr_high=self.model_params['lrate'], lr_low=self.model_params['lrate'] / 32, initial_period=10),
             verbose=1)
         model_callbacks = [lr_scheduler]
         
@@ -131,10 +129,22 @@ class MOOC_Keras_Model(object):
             model_callbacks.append(callbacks.ModelCheckpoint(model_save_path, monitor='val_loss', save_best_only=True, verbose=1))
         if tensorboard_log_path is not None:
             model_callbacks.append(callbacks.TensorBoard(tensorboard_log_path, \
-                histogram_freq=1, batch_size=batch_size, write_grads=True, write_images=True, \
-                embeddings_freq=epoch_limit, embeddings_layer_names='bpe_embeddings', embeddings_data=np.arange(self.embedding_vocab_size)))
+                histogram_freq=1, batch_size=batch_size, write_grads=True, write_images=True))
 
         self.model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=batch_size, epochs=epoch_limit, callbacks=model_callbacks)
+
+    def transformer_model_finetune(self, train_x, train_y, val_x, val_y, epoch_limit=5, batch_size=64, model_save_path=None, tensorboard_log_path=None):
+        assert self.model_params is not None, 'Please create model before training'
+        print('Fine-tuning model with params: {}'.format(self.model_params))
+        
+        #freeze all other layers
+        for layer in self.model.layers:
+            if layer.name != 'bpe_embeddings':
+                layer.trainable = False
+        #recompile model
+        self.model.compile(optimizer=opt(lr=lrate), loss='categorical_crossentropy', metrics=['accuracy'])
+        self.model.summary()
+        self.model.transformer_model_fit(train_x, train_y, val_x, val_y, epoch_limit, batch_size, model_save_path, tensorboard_log_path)
 
     def transformer_model_eval(self, test_x, test_y, batch_size=64, tensorboard_log_path=None):
         '''

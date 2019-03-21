@@ -46,7 +46,7 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
         grouped_by_title = self.pre_index_data.groupby('vertical_title')
         for title, data in grouped_by_title:
             if title not in vertical_index_to_title:
-                vertical_index_to_title[title] = data.vertical_index[0]
+                vertical_index_to_title[title] = str(data.vertical_index.mode())
         self.vertical_index_to_title = vertical_index_to_title
     '''
     def create_full_indices_based_on_pre_index_data_ignoring_time_spent(self):
