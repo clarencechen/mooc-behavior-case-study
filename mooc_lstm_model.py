@@ -4,7 +4,6 @@ import numpy as np
 import keras
 import os
 
-from keras.preprocessing import sequence
 from keras.optimizers import SGD, RMSprop, Adagrad, Adam
 from keras.utils import np_utils
 from keras.models import Sequential
