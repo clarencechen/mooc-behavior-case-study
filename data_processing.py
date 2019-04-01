@@ -29,8 +29,14 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
     The unique representation of action is what should be converted to indices (for output into embedding layer).
     Outputs X y used to train model, along with vocab_size for keras model.
     """
-    def __init__(self, input_file):
-        raw_data = pd.read_csv(input_file, delimiter='\t', usecols=['username', 'vertical_index', 'vertical_title', 'basic_type', 'time'])
+    def __init__(self, input_file, has_header):
+        if has_header:
+            raw_data = pd.read_csv(input_file, delimiter='\t', \
+                usecols=['username', 'vertical_index', 'basic_type', 'time', 'vertical_title',])
+        else:
+            raw_data = pd.read_csv(input_file, delimiter='\t', \
+                usecols=[0, 4, 5, 7, 10], names=['username', 'vertical_index', 'basic_type', 'time', 'vertical_title'], header=None)
+
         seq_rows = raw_data[raw_data['basic_type'].isin(['seq_goto', 'seq_next', 'seq_prev'])]
 
         self.pre_index_data = seq_rows.sort_values('time')

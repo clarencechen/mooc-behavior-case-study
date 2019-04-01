@@ -7,7 +7,7 @@ import os
 from keras.optimizers import SGD, RMSprop, Adagrad, Adam
 from keras.utils import np_utils
 from keras.models import Sequential
-from keras.layers import Input
+from keras.layers import Input, Dense
 from keras.models import Model
 from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM, GRU
