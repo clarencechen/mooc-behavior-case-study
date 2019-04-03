@@ -10,19 +10,22 @@ HAS_HEADER = [True, False, True, False, True, True]
 DATA_DIR = '../../mooc-data/'
 dataset_names = ['{}{}_parsed_v2.tsv'.format(DATA_DIR, course) for course in COURSE_NAMES]
 sequence_max_len = 256
+num_time_spent_buckets = 4
 
-for i in range(3, 6):
+for i in [3]:
 
     my_verticals = Vertical_Output(dataset_names[i], HAS_HEADER[i])
 
     old_embedding_size = my_verticals.pre_index_data.vertical_index.max()
 
-    my_verticals.current_full_indices, my_verticals.current_full_indices_userids = my_verticals.create_full_indices_based_on_pre_index_data_ignoring_time_spent()
+    my_verticals.create_full_indices_based_on_pre_index_data_ignoring_time_spent()
     my_verticals.prepend_1_to_current_full_indices()
 
     print("Number of users registered for coursename {}: {}".format(COURSE_NAMES[i], len(my_verticals.current_full_indices)))
     print("Number of vertical page ids for coursename {}: {}".format(COURSE_NAMES[i], old_embedding_size))
-    print("Example sequence for student 5: ", my_verticals.current_full_indices[5])
+
+    print("Example index sequence for student 5: ", my_verticals.current_full_indices[5])
+    print("Example time_spent sequence for student 5: ", my_verticals.list_of_time_spent[5])
 
     old_X, old_y = my_verticals.expose_x_y(max_len=sequence_max_len)
 
@@ -46,11 +49,11 @@ for i in range(3, 6):
         model_load_path=None)
 
     transformer_model.transformer_model_fit(train_x, train_y, val_x, val_y, epoch_limit=20, batch_size=128, \
-        model_save_path='transformer_weights_{}'.format(COURSE_NAMES[i]), tensorboard_log_path='tensorboard_logs')
+        model_save_path='transformer_weights_{}'.format(COURSE_NAMES[i]), tensorboard_log_path=None)
 
 '''
 new_verticals = Vertical_Output(dataset_names[1])
-new_verticals.current_full_indices, new_verticals.current_full_indices_userids = new_verticals.create_full_indices_based_on_pre_index_data_ignoring_time_spent()
+new_verticals.current_full_indices = new_verticals.create_full_indices_based_on_pre_index_data_ignoring_time_spent()
 new_verticals.prepend_1_to_current_full_indices()
 
 new_X, new_y = new_verticals.expose_x_y(max_len=sequence_max_len)

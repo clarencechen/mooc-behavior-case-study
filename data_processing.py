@@ -41,7 +41,7 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
 
         self.pre_index_data = seq_rows.sort_values('time')
         self.current_full_indices = []
-        self.current_full_indices_userids = []
+        self.current_full_time_spent = []
         print('Done reading pre_index_data.')
 
     def populate_time_spent_in_pre_index_data(self):
@@ -57,28 +57,34 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
     '''
     def create_full_indices_based_on_pre_index_data_ignoring_time_spent(self):
         """
-        Returns pre_index_data mapped to indices (list of lists), as well as corresponding list of user ids
+        Fills pre_index_data mapped to indices (list of lists), as well as corresponding list of user ids
         """
         list_of_indices = []
         list_of_indices_userids = []
         grouped_by_user = self.pre_index_data.groupby('username')
         for user_id, data in grouped_by_user:
-            list_of_indices.append(list(data.vertical_index))
-            list_of_indices_userids.append(user_id)
-        return list_of_indices, list_of_indices_userids
+            # calculate time elapsed from last index for this user
+            time_stamps = pd.to_datetime(data['time'], infer_datetime_format=True)
+            time_diffs.diff()[1:].map(lambda x : x.total_seconds())
+            bucketed_time_spent = list(pd.cut(time_diffs, bins=[0, 10, 60, 1800], right=True))
+
+            list_of_indices.append(list(data['vertical_index']))
+            list_of_time_spent.append([0.] + bucketed_time_spent)
+        
+        self.current_full_indices = list_of_indices
+        self.current_full_time_spent = list_of_time_spent
         
     def prepend_1_to_current_full_indices(self):
         """
         MUTATES self.current_full_indices such that a 1 is prepended to all lists
         Will not prepend a 1 if there is already a 1 at the start
         """
-        for seq in self.current_full_indices:
-            if seq[0] == 1:
+        for index_seq, time_spent in zip(self.current_full_indices, self.time_spent):
+            if index_seq[0] == 1:
                 continue
             else:
-                seq.reverse()
-                seq.append(1)
-                seq.reverse()
+                index_seq.insert(0, 1)
+                time_spent.insert(0, 0)
                 continue
 
     def remove_contiguous_repeats_from_pre_index_data(self, keep_highest_time_spent = True):
