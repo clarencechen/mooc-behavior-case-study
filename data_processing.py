@@ -59,13 +59,12 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
         """
         Fills pre_index_data mapped to indices (list of lists), as well as corresponding list of user ids
         """
-        list_of_indices = []
-        list_of_indices_userids = []
+        list_of_indices, list_of_time_spent = [], []
         grouped_by_user = self.pre_index_data.groupby('username')
         for user_id, data in grouped_by_user:
             # calculate time elapsed from last index for this user
             time_stamps = pd.to_datetime(data['time'], infer_datetime_format=True)
-            time_diffs.diff()[1:].map(lambda x : x.total_seconds())
+            time_diffs = time_stamps.diff()[1:].map(lambda x : x.total_seconds())
             bucketed_time_spent = list(pd.cut(time_diffs, bins=[0, 10, 60, 1800], right=True))
 
             list_of_indices.append(list(data['vertical_index']))
@@ -79,12 +78,12 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
         MUTATES self.current_full_indices such that a 1 is prepended to all lists
         Will not prepend a 1 if there is already a 1 at the start
         """
-        for index_seq, time_spent in zip(self.current_full_indices, self.time_spent):
+        for index_seq, time_spent in zip(self.current_full_indices, self.current_full_time_spent):
             if index_seq[0] == 1:
                 continue
             else:
                 index_seq.insert(0, 1)
-                time_spent.insert(0, 0)
+                time_spent.insert(0, 1)
                 continue
 
     def remove_contiguous_repeats_from_pre_index_data(self, keep_highest_time_spent = True):
@@ -157,9 +156,11 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
         """
         Returns X, y numpy arrays based on current_full_indices
         """
-        x_windows = [seq[:-1] for seq in self.current_full_indices if len(seq) >= min_len]
+        idx_windows = [seq[:-1] for seq in self.current_full_indices if len(seq) >= min_len]
+        time_windows = [seq[:-1] for seq in self.current_full_time_spent if len(seq) >= min_len]
+        
         y_windows = [seq[1:] for seq in self.current_full_indices if len(seq) >= min_len]
-        X = sequence.pad_sequences(x_windows, maxlen=max_len, padding='post', truncating='post')
+        X = sequence.pad_sequences(idx_windows, maxlen=max_len, padding='post', truncating='post')
         padded_y_windows = sequence.pad_sequences(y_windows, maxlen=max_len, padding='post', truncating='post')
         self.padded_y_windows = padded_y_windows
         y = np.zeros((len(padded_y_windows), max_len, int(self.pre_index_data.vertical_index.max() +1)), dtype=np.bool)

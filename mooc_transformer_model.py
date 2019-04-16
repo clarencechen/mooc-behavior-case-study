@@ -56,7 +56,7 @@ class MOOC_Transformer_Model(object):
                 num_heads=8)
 
         optimizer = Adam(lr=lrate, beta_1=0.9, beta_2=0.999, clipvalue=5.0)
-        model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer=optimizer, metrics=['accuracy'])
         
         # load model weights if specified
         if model_load_path is not None and os.path.exists(model_load_path):
@@ -90,7 +90,7 @@ class MOOC_Transformer_Model(object):
                 num_heads=8)
 
         optimizer = Adam(lr=lrate, beta_1=0.9, beta_2=0.999, clipvalue=5.0)
-        old_model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+        old_model.compile(optimizer=optimizer, metrics=['accuracy'])
         
         # load model weights if specified
         if os.path.exists(model_load_path):

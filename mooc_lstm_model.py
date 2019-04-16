@@ -39,7 +39,7 @@ class MOOC_LSTM_Model(object):
     def model_params_to_string(self):
         return '_{layers!s}_{seq_len!s}_{embed_dim!s}_{e_vocab_size!s}_{lrate!s}'.format(**self.model_params)
 
-    def create_basic_lstm_model(self, lrate=0.01, opt=RMSprop, layers=2, hidden_size=128, embed_dim=128, seq_len=256, model_load_path=None):
+    def create_basic_lstm_model(self, use_enhancements=True, lrate=0.01, layers=2, hidden_size=128, embed_dim=128, seq_len=256, model_load_path=None):
         """
         Returns a LSTM model
         """
@@ -48,18 +48,21 @@ class MOOC_LSTM_Model(object):
             'embed_dim': embed_dim,
             'e_vocab_size': self.embedding_vocab_size,
             'seq_len': seq_len,
-            'lrate': lrate,
-            'optimizer': opt}
+            'lrate': lrate}
 
-        main_input = Input(shape=(seq_len,), name='main_input', dtype='int32')
-        x = Embedding(input_dim=self.embedding_vocab_size, output_dim=embed_dim, input_length=seq_len, mask_zero=True)(main_input)
-        for i in range(layers):
-            print("Adding layer: " + str(i))
-            x = LSTM(hidden_size, dropout=0.2, return_sequences=True)(x)
-        main_loss = TimeDistributed(Dense(self.embedding_vocab_size, activation='softmax'))(x)
-        
-        model = Model(inputs=[main_input], outputs=[main_loss])
-        model.compile(optimizer=opt(lr=lrate), loss='categorical_crossentropy', metrics=['accuracy'])
+        if(use_enhancements):
+            model = enhanced_lstm_model(self.model_params)
+            model.compile(optimizer=RMSprop(lr=lrate), metrics=['accuracy'])
+        else:
+            main_input = Input(shape=(seq_len,), name='main_input', dtype='int32')
+            x = Embedding(input_dim=self.embedding_vocab_size, output_dim=embed_dim, input_length=seq_len, mask_zero=True)(main_input)
+            for i in range(layers):
+                print("Adding layer: " + str(i))
+                x = LSTM(hidden_size, dropout=0.2, return_sequences=True)(x)
+            main_loss = TimeDistributed(Dense(self.embedding_vocab_size, activation='softmax'))(x)
+
+            model = Model(inputs=[main_input], outputs=[main_loss])
+            model.compile(optimizer=RMSprop(lr=lrate), loss='categorical_crossentropy', metrics=['accuracy'])
 
         # load model weights if specified
         if model_load_path is not None and os.path.exists(model_load_path):

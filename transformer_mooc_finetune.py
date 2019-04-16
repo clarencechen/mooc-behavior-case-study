@@ -38,7 +38,7 @@ def build_finetune_model(old_model, model_params, freeze_layers=False):
     # build and compule new model
     finetune_model = Model(inputs=[new_course_ids], outputs=[new_predictions])
     optimizer = Adam(lr=model_params['lrate'], beta_1=0.9, beta_2=0.999, clipvalue=5.0)
-    finetune_model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+    finetune_model.compile(optimizer=optimizer, metrics=['accuracy'])
     print('Finetuned model compiled successfully.\n')
     finetune_model.summary()
     return finetune_model
