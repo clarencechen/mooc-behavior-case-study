@@ -4,16 +4,19 @@ import numpy as np
 import keras
 import os
 
-from keras.optimizers import SGD, RMSprop, Adagrad, Adam
+from keras.optimizers import RMSprop
 from keras.utils import np_utils
-from keras.models import Sequential
-from keras.layers import Input, Dense
+
 from keras.models import Model
+from keras.layers import Input, Dense
+
 from keras.layers.embeddings import Embedding
-from keras.layers.recurrent import LSTM, GRU
+from keras.layers.recurrent import LSTM
 from keras.layers.wrappers import TimeDistributed
+
 import keras.callbacks as callbacks
 
+from mooc_enhanced_lstm import enhanced_lstm_model
 
 class MOOC_LSTM_Model(object):
     """
@@ -52,7 +55,7 @@ class MOOC_LSTM_Model(object):
 
         if(use_enhancements):
             model = enhanced_lstm_model(self.model_params)
-            model.compile(optimizer=RMSprop(lr=lrate), metrics=['accuracy'])
+            model.compile(optimizer=RMSprop(lr=lrate), loss='categorical_crossentropy', metrics=['accuracy'])
         else:
             main_input = Input(shape=(seq_len,), name='main_input', dtype='int32')
             x = Embedding(input_dim=self.embedding_vocab_size, output_dim=embed_dim, input_length=seq_len, mask_zero=True)(main_input)

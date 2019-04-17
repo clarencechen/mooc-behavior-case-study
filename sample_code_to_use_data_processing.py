@@ -10,7 +10,7 @@ HAS_HEADER = [True, False, True, False, True, True]
 DATA_DIR = '../../mooc-data/'
 dataset_names = ['{}{}_parsed_v2.tsv'.format(DATA_DIR, course) for course in COURSE_NAMES]
 sequence_max_len = 256
-num_time_spent_buckets = 4
+num_time_spent_buckets = 0
 
 for i in [3]:
 

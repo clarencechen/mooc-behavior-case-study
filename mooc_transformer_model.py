@@ -7,12 +7,13 @@ import os
 from keras.optimizers import Adam
 from keras.utils import np_utils
 
-import keras.callbacks as callbacks
 from keras.models import Model
 
 from transformer_utils import load_optimizer_weights, CosineLRSchedule
 from transformer_models import vanilla_transformer_gpt_model
 from transformer_mooc_finetune import build_finetune_model
+
+import keras.callbacks as callbacks
 
 class MOOC_Transformer_Model(object):
     """
@@ -56,7 +57,7 @@ class MOOC_Transformer_Model(object):
                 num_heads=8)
 
         optimizer = Adam(lr=lrate, beta_1=0.9, beta_2=0.999, clipvalue=5.0)
-        model.compile(optimizer=optimizer, metrics=['accuracy'])
+        model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
         
         # load model weights if specified
         if model_load_path is not None and os.path.exists(model_load_path):
