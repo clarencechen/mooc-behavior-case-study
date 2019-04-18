@@ -85,7 +85,7 @@ class MOOC_LSTM_Model(object):
         
         assert self.model_params is not None
 
-        model_callbacks = []
+        model_callbacks = [callbacks.TerminateOnNaN()]
         if model_save_path is not None:
             model_callbacks.append(callbacks.ModelCheckpoint(model_save_path, monitor='val_loss', save_best_only=True, verbose=True))
         if tensorboard_log_path is not None:
@@ -97,22 +97,28 @@ class MOOC_LSTM_Model(object):
             print("Epoch: ", i)
             current_history = self.model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=batch_size, epochs=1, callbacks=model_callbacks)
             current_history = current_history.history
-            validation_loss, validation_accuracy = current_history['val_loss'][0], current_history['val_acc'][0]
+            try:
+                validation_loss, validation_accuracy = current_history['val_loss'][0], current_history['val_acc'][0]
+            except KeyError:
+                print("NaN encountered in training at epoch {}, terminating training.".format(i))
+                return
+
             #average_of_average_accuracy = np.mean(validation_accuracy_dictionary['averages'])
             self.previous_val_loss.append(validation_loss)
             if len(self.previous_val_loss) > loss_nonimprove_limit:
                 min_val_loss = min(self.previous_val_loss)
-                recent_losses = self.previous_val_loss[-loss_nonimprove_limit-1:]
-                print(recent_losses)
+                recent_losses = self.previous_val_loss[-loss_nonimprove_limit:]
+                print("Validation losses for past {} epochs:".format(loss_nonimprove_limit), recent_losses)
                 if min(recent_losses) > min_val_loss:
-                    early_stopping_met = True
+                    print("Early stopping reached.")
+                    break
                 if validation_loss == min_val_loss:
                     self.best_epoch = i
                     #self.best_average_of_average_accuracy = average_of_average_accuracy
                     self.best_accuracy = validation_accuracy
-            if early_stopping_met:
-                print("Early stopping reached.")
-                print("Best epoch according to validation loss:", self.best_epoch)
-                print("Best epoch's accuracy:", self.best_accuracy)
-                #print("Best epoch's average accuracy:", self.best_average_of_average_accuracy)
-                return
+        
+        if early_stopping_met:
+            print("Best epoch according to validation loss:", self.best_epoch)
+            print("Best epoch's accuracy:", self.best_accuracy)
+            #print("Best epoch's average accuracy:", self.best_average_of_average_accuracy)
+            return

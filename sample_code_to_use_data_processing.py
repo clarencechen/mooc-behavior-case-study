@@ -12,7 +12,7 @@ dataset_names = ['{}{}_parsed_v2.tsv'.format(DATA_DIR, course) for course in COU
 sequence_max_len = 256
 num_time_spent_buckets = 0
 
-for i in [3]:
+for i in range(6):
 
     my_verticals = Vertical_Output(dataset_names[i], HAS_HEADER[i])
 

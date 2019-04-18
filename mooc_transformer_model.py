@@ -111,7 +111,7 @@ class MOOC_Transformer_Model(object):
         lr_scheduler = callbacks.LearningRateScheduler(
             CosineLRSchedule(lr_high=self.model_params['lrate'], lr_low=self.model_params['lrate'] / 32, initial_period=10),
             verbose=1)
-        model_callbacks = [lr_scheduler]
+        model_callbacks = [lr_scheduler, callbacks.TerminateOnNaN()]
         
         if model_save_path is not None:
             model_callbacks.append(callbacks.ModelCheckpoint(model_save_path, monitor='val_loss', save_best_only=True, verbose=1))
