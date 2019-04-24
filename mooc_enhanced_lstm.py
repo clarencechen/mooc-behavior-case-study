@@ -45,7 +45,7 @@ def enhanced_lstm_model(model_params, \
     # Output Distributions" (https://arxiv.org/abs/1701.06548)
     confidence_penalty = K.mean(
         confidence_penalty_weight *
-        K.sum(word_predictions * K.log(word_predictions), axis=-1))
+        K.sum(word_predictions * K.log(word_predictions +K.epsilon()), axis=-1))
     model.add_loss(confidence_penalty)
 
     return model

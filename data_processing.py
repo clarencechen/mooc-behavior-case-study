@@ -65,7 +65,7 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
             # calculate time elapsed from last index for this user
             time_stamps = pd.to_datetime(data['time'], infer_datetime_format=True)
             time_diffs = time_stamps.diff()[1:].map(lambda x : x.total_seconds())
-            bucketed_time_spent = list(pd.cut(time_diffs, bins=[0, 10, 60, 1800], labels=False, right=True))
+            bucketed_time_spent = list(pd.cut(time_diffs, bins=[0, 10, 60, 1800, np.inf], labels=False, right=True))
 
             list_of_indices.append(list(data['vertical_index']))
             list_of_time_spent.append([0.] + bucketed_time_spent)
