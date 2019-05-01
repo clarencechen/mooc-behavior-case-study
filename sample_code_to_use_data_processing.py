@@ -34,22 +34,24 @@ for i in range(6):
     train_x, val_x = old_X[:train_index], old_X[train_index:]
     train_y, val_y = old_y[:train_index], old_y[train_index:]
 
+
     #Step 2: Build a Keras LSTM Model and train on data from the Step 2 Bridge.
     print("Now training LSTM Model for {}:".format(COURSE_NAMES[i]))
     lstm_model = MOOC_LSTM_Model(old_embedding_size +num_time_spent_buckets)
     lstm_model.create_basic_lstm_model(use_enhancements=True, lrate=0.01, layers=2, hidden_size=128, embed_dim=128, seq_len=sequence_max_len, \
-        model_load_path=None)
-    lstm_model.early_stopping_model_fit(train_x, train_y, val_x, val_y, \
-        model_save_path='lstm_weights_{}'.format(COURSE_NAMES[i]), tensorboard_log_path=None, loss_nonimprove_limit=3)
+        model_load_path='lstm_weights_{}'.format(COURSE_NAMES[i]))
+    #lstm_model.early_stopping_model_fit(train_x, train_y, val_x, val_y, \
+    #    model_save_path='lstm_weights_{}'.format(COURSE_NAMES[i]), tensorboard_log_path=None, loss_nonimprove_limit=3)
+    lstm_model.lstm_model_eval(val_x, val_y, batch_size=64)
 
     #Step 3: Build a Keras Transformer Model and train on same data as the LSTM from Step 2.
     print("Now training first Transformer Model for {}:".format(COURSE_NAMES[i]))
     transformer_model = MOOC_Transformer_Model(old_embedding_size +num_time_spent_buckets)
     transformer_model.create_basic_transformer_model(lrate=1e-3, layers=4, embed_dim=128, seq_len=sequence_max_len, \
-        model_load_path=None)
-
-    transformer_model.transformer_model_fit(train_x, train_y, val_x, val_y, epoch_limit=20, batch_size=128, \
-        model_save_path='transformer_weights_{}'.format(COURSE_NAMES[i]), tensorboard_log_path=None)
+        model_load_path='transformer_weights_{}'.format(COURSE_NAMES[i]))
+    #transformer_model.transformer_model_fit(train_x, train_y, val_x, val_y, epoch_limit=20, batch_size=128, \
+    #    model_save_path='transformer_weights_{}'.format(COURSE_NAMES[i]), tensorboard_log_path=None)
+    transformer_model.transformer_model_eval(val_x, val_y, batch_size=128)
 
 '''
 new_verticals = Vertical_Output(dataset_names[1])

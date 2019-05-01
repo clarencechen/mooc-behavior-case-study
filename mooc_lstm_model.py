@@ -16,6 +16,7 @@ from keras.layers.wrappers import TimeDistributed
 
 import keras.callbacks as callbacks
 
+from transformer_utils import load_optimizer_weights
 from mooc_enhanced_lstm import enhanced_lstm_model
 
 class MOOC_LSTM_Model(object):
@@ -122,3 +123,19 @@ class MOOC_LSTM_Model(object):
             print("Best epoch's accuracy:", self.best_accuracy)
             #print("Best epoch's average accuracy:", self.best_average_of_average_accuracy)
             return
+
+    def lstm_model_eval(self, test_x, test_y, batch_size=64, tensorboard_log_path=None):
+        '''
+        Evaluate model using test set
+        '''
+        assert self.model_params is not None, 'Please create model before testing'
+        print('Testing model with params: {}'.format(self.model_params))
+
+        model_callbacks = []
+
+        if tensorboard_log_path is not None:
+            model_callbacks.append(callbacks.TensorBoard(tensorboard_log_path))
+
+        test_metrics = self.model.evaluate(test_x, test_y, batch_size=batch_size)
+        for metric_name, metric_value in zip(self.model.metrics_names, test_metrics):
+            print('Test {}: {:.8f}'.format(metric_name, metric_value))
