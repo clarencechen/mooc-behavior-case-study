@@ -36,7 +36,7 @@ def enhanced_lstm_model(model_params, \
     next_step_input, embedding_matrix = embedding_layer(word_ids)
 
     for i in range(model_params['layers']):
-        next_step_input = LSTM(model_params['hidden_size'], dropout=lstm_dropout, return_sequences=True, name='LSTM_layer_'+str(i))(next_step_input)
+        next_step_input = LSTM(model_params['embed_dim'], dropout=lstm_dropout, return_sequences=True, name='LSTM_layer_'+str(i))(next_step_input)
 
     word_predictions = output_softmax_layer(output_layer([next_step_input, embedding_matrix]))
     model = Model(inputs=[word_ids], outputs=[word_predictions])
