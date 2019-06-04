@@ -10,7 +10,7 @@ HAS_HEADER = [True, False, True, False, True, True]
 DATA_DIR = '../../mooc-data/'
 dataset_names = ['{}{}_parsed_v2.tsv'.format(DATA_DIR, course) for course in COURSE_NAMES]
 sequence_max_len = 256
-num_time_spent_buckets = 0
+train_proportion, val_proportion = 0.63, 0.07
 
 for i in range(6):
 
@@ -29,7 +29,6 @@ for i in range(6):
 
     old_X, old_y = my_verticals.expose_x_y(max_len=sequence_max_len)
 
-    train_proportion, val_proportion = 0.63, 0.07
     train_index, val_index = int(len(old_X)*train_proportion), int(len(old_X)*(train_proportion +val_proportion))
     train_x, val_x, test_x = old_X[:train_index], old_X[train_index:val_index], old_X[val_index:] 
     train_y, val_y, test_y = old_y[:train_index], old_y[train_index:val_index], old_y[val_index:]
@@ -37,7 +36,7 @@ for i in range(6):
 
     #Step 2: Build a Keras LSTM Model and train on data from the Step 2 Bridge.
     print("Now training LSTM Model for {}:".format(COURSE_NAMES[i]))
-    lstm_model = MOOC_LSTM_Model(old_embedding_size +num_time_spent_buckets)
+    lstm_model = MOOC_LSTM_Model(old_embedding_size)
     lstm_model.create_lstm_model(use_enhancements=False, lrate=0.01, layers=2, embed_dim=128, seq_len=sequence_max_len, \
         model_load_path=None)
     lstm_model.early_stopping_fit(train_x, train_y, val_x, val_y, \
@@ -48,7 +47,7 @@ for i in range(6):
 '''
     #Step 3: Build a Keras Transformer Model and train on same data as the LSTM from Step 2.
     print("Now training first Transformer Model for {}:".format(COURSE_NAMES[i]))
-    transformer_model = MOOC_Transformer_Model(old_embedding_size +num_time_spent_buckets)
+    transformer_model = MOOC_Transformer_Model(old_embedding_size)
     transformer_model.create_basic_transformer_model(lrate=1e-3, layers=4, embed_dim=128, seq_len=sequence_max_len, \
         model_load_path=None)
     transformer_model.early_stopping_fit(train_x, train_y, val_x, val_y, batch_size=128, \
