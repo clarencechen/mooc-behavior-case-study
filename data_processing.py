@@ -152,19 +152,25 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
         temp_df = pd.DataFrame(data_to_append, columns = ['user', 'time', 'vertical_index', 'time_spent'])
         return temp_df
 
-    def expose_x_y(self, max_len = 256, min_len = 3):
+    def expose_x_y(self, seq_len=256, min_len=3, train_proportion=0.63, val_proportion=0.07):
         """
         Returns X, y numpy arrays based on current_full_indices
         """
-        idx_windows = [seq[:-1] for seq in self.current_full_indices if len(seq) >= min_len]
-        time_windows = [seq[:-1] for seq in self.current_full_time_spent if len(seq) >= min_len]
+        x_seq = [seq[:-1] for seq in self.current_full_indices if len(seq) >= min_len]
+        padded_x_seq = sequence.pad_sequences(x_windows, maxlen=max_len, padding='post', truncating='post')
         
-        y_windows = [seq[1:] for seq in self.current_full_indices if len(seq) >= min_len]
-        X = sequence.pad_sequences(idx_windows, maxlen=max_len, padding='post', truncating='post')
-        padded_y_windows = sequence.pad_sequences(y_windows, maxlen=max_len, padding='post', truncating='post')
-        self.padded_y_windows = padded_y_windows
-        y = np.zeros((len(padded_y_windows), max_len, int(self.pre_index_data.vertical_index.max() +1)), dtype=np.bool)
-        for i, output in enumerate(padded_y_windows):
+        #time_windows = [seq[:-1] for seq in self.current_full_time_spent if len(seq) >= min_len]
+        #padded_time_spent_seq = sequence.pad_sequences(time_windows, maxlen=max_len, padding='post', truncating='post')
+        
+        y_seq = [seq[1:] for seq in self.current_full_indices if len(seq) >= min_len]
+        padded_y_seq = sequence.pad_sequences(y_windows, maxlen=max_len, padding='post', truncating='post')
+        
+        y_one_hot = np.zeros((len(padded_y_seq), max_len, int(self.pre_index_data.vertical_index.max() +1)), dtype=np.bool)
+        for i, output in enumerate(padded_y_seq):
             for t, vert_index in enumerate(output):
-                y[int(i), int(t), int(vert_index)] = 1
-        return X, y
+                y_one_hot[int(i), int(t), int(vert_index)] = 1
+        
+        train_index, val_index = int(len(padded_x_seq)*train_proportion), int(len(y_one_hot)*(train_proportion +val_proportion))
+        train_x, val_x, test_x = old_X[:train_index], old_X[train_index:val_index], old_X[val_index:] 
+        train_y, val_y, test_y = old_y[:train_index], old_y[train_index:val_index], old_y[val_index:]
+        return train_x, train_y, val_x, val_y, test_x, test_y

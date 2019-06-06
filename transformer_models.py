@@ -4,6 +4,8 @@ from keras.models import Model
 from keras import backend as K
 from keras.layers import Input, Softmax, Embedding, Add, Lambda, Dense
 
+from multihot_utils import ReusableEmbed_Multihot
+
 from keras_transformer.extras import ReusableEmbedding, TiedOutputEmbedding
 from keras_transformer.position import TransformerCoordinateEmbedding
 from keras_transformer.transformer import TransformerACT, TransformerBlock
@@ -77,24 +79,38 @@ def vanilla_transformer_gpt_model(
         num_heads: int, transformer_dropout: float = 0.1,
         embedding_dropout: float = 0.6,
         l2_reg_penalty: float = 1e-6,
-        confidence_penalty_weight: float = 0.1):
+        confidence_penalty_weight: float = 0.1,
+        multihot_input = False):
     """
     A model which is almost identical to the one described by OpenAI in paper
     "Improving Language Understanding by Generative Pre-Training", except
     that it uses L2 regularization of the word embedding matrix,
     instead of the dropout.
     """
-    word_ids = Input(shape=(max_seq_length,), dtype='int32', name='word_ids')
+    if multihot_input:
+        word_ids = Input(shape=(max_seq_length, vocabulary_size), dtype='float', name='multihot_ids')
+    else:
+        word_ids = Input(shape=(max_seq_length,), dtype='int32', name='word_ids')
     l2_regularizer = (regularizers.l2(l2_reg_penalty) if l2_reg_penalty
                       else None)
-    embedding_layer = ReusableEmbedding(
-        vocabulary_size, word_embedding_size,
-        input_length=max_seq_length,
-        name='bpe_embeddings',
-        # Regularization is based on paper "A Comparative Study on
-        # Regularization Strategies for Embedding-based Neural Networks"
-        # https://arxiv.org/pdf/1508.03721.pdf
-        embeddings_regularizer=l2_regularizer)
+    if multihot_input:
+        embedding_layer = ReusableEmbed_Multihot(
+            vocabulary_size, word_embedding_size,
+            input_length=max_seq_length,
+            name='multihot_embeddings',
+            # Regularization is based on paper "A Comparative Study on
+            # Regularization Strategies for Embedding-based Neural Networks"
+            # https://arxiv.org/pdf/1508.03721.pdf
+            embeddings_regularizer=l2_regularizer)
+    else:
+        embedding_layer = ReusableEmbedding(
+            vocabulary_size, word_embedding_size,
+            input_length=max_seq_length,
+            name='bpe_embeddings',
+            # Regularization is based on paper "A Comparative Study on
+            # Regularization Strategies for Embedding-based Neural Networks"
+            # https://arxiv.org/pdf/1508.03721.pdf
+            embeddings_regularizer=l2_regularizer)
     output_layer = TiedOutputEmbedding(
         projection_regularizer=l2_regularizer,
         projection_dropout=embedding_dropout,
