@@ -24,12 +24,13 @@ class UCB_Course_Data_Vertical(object):
 
             it_1 = np.nditer(index_matrix, ['multi_index', 'refs_ok'], ['readonly'])
             with it_1:
+                one_hot_mold = np.eye(self.num_courses)
                 while not it_1.finished:
                     elem = it_1[0].item()
                     # check for empty semesters
                     if len(elem) > 0:
                         temp_arr = np.array(elem, dtype='int32')
-                        courses_one_hot = np.sum(np.eye(self.num_courses)[temp_arr[:,0] -1], axis=0)
+                        courses_one_hot = np.sum(one_hot_mold[temp_arr[:,0] -1], axis=0)
                         self.course_data[it_1.multi_index[0], it_1.multi_index[1], :] = courses_one_hot
                     it_1.iternext()
 
@@ -39,12 +40,13 @@ class UCB_Course_Data_Vertical(object):
 
             it_2 = np.nditer(index_matrix, ['multi_index', 'refs_ok'], ['readonly'])
             with it_2:
+                one_hot_mold = np.eye(self.num_grades)
                 while not it_2.finished:
                     elem = it_2[0].item()
                     # check for empty semesters
                     if len(elem) > 0:
                         temp_arr = np.array(elem, dtype='int32')
-                        grades_one_hot = np.sum(np.eye(self.num_grades)[temp_arr[:,1] -1], axis=0)
+                        grades_one_hot = np.sum(one_hot_mold[temp_arr[:,1] -1], axis=0)
                         self.grade_data[it_2.multi_index[0], it_2.multi_index[1], :] = grades_one_hot
                     it_2.iternext()
 
