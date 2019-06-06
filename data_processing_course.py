@@ -18,29 +18,40 @@ class UCB_Course_Data_Vertical(object):
 
             index_matrix = np.array(self.course_grade_data)
 
-            course_data = np.zeros((self.num_students, self.num_semesters, self.num_courses))
-            grade_data = np.zeros((self.num_students, self.num_semesters, self.num_grades))
-            
+            self.course_data = np.zeros((self.num_students, self.num_semesters, self.num_courses))
+            self.grade_data = np.zeros((self.num_students, self.num_semesters, self.num_grades))
 
-            it = np.nditer(index_matrix, ['multi_index', 'refs_ok'], ['readonly'])
-            with it:
-                while not it.finished:
-                    elem = it[0].item()
+
+            it_1 = np.nditer(index_matrix, ['multi_index', 'refs_ok'], ['readonly'])
+            with it_1:
+                while not it_1.finished:
+                    elem = it_1[0].item()
                     # check for empty semesters
                     if len(elem) > 0:
                         temp_arr = np.array(elem, dtype='int32')
                         courses_one_hot = np.sum(np.eye(self.num_courses)[temp_arr[:,0] -1], axis=0)
-                        grades_one_hot = np.sum(np.eye(self.num_grades)[temp_arr[:,1] -1], axis=0)
-                        course_data[it.multi_index[0], it.multi_index[1], :], grade_data[it.multi_index[0], it.multi_index[1], :] = courses_one_hot, grades_one_hot
-                    it.iternext()
+                        self.course_data[it_1.multi_index[0], it_1.multi_index[1], :] = courses_one_hot
+                    it_1.iternext()
 
             print('Done parsing course_data.')
-            print('Example course sequence for student 5: ', course_data[5])
-            print('Done parsing grade_data.')
-            print('Example grade sequence for student 5: ', grade_data[5])
+            print('Example course sequence for student 5: ', self.course_data[5])
+            self.course_data.dump('../../berkeley_course_data.pkl')
 
-            course_data.dump('../../berkeley_course_data.pkl')
-            grade_data.dump('../../berkeley_grade_data.pkl')
+            it_2 = np.nditer(index_matrix, ['multi_index', 'refs_ok'], ['readonly'])
+            with it_2:
+                while not it_2.finished:
+                    elem = it_2[0].item()
+                    # check for empty semesters
+                    if len(elem) > 0:
+                        temp_arr = np.array(elem, dtype='int32')
+                        grades_one_hot = np.sum(np.eye(self.num_grades)[temp_arr[:,1] -1], axis=0)
+                        self.grade_data[it_2.multi_index[0], it_2.multi_index[1], :] = grades_one_hot
+                    it_2.iternext()
+
+            print('Done parsing grade_data.')
+            print('Example grade sequence for student 5: ', self.grade_data[5])
+            self.grade_data.dump('../../berkeley_grade_data.pkl')
+
 
             '''
             it = np.nditer([index_matrix, course_data, grade_data], flags=['external_loop', 'refs_ok'], op_flags=[['readonly'], ['writeonly'], ['writeonly']], op_axes = [[0, 1], [0, 1], [0, 1]])

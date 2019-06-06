@@ -28,8 +28,7 @@ class MOOC_LSTM_Model(MOOC_Model):
     def __init__(self, embedding_vocab_size):
         super().__init__(embedding_vocab_size)
 
-
-    def create_lstm_model(self, use_enhancements=True, lrate=0.01, layers=2, embed_dim=128, seq_len=256, model_load_path=None):
+    def create_lstm_model(self, lrate=0.01, layers=2, embed_dim=128, seq_len=256, model_load_path=None, confidence_penalty_weight=0, use_tied_embedding=False, lstm_dropout=0.2):
         """
         Returns a LSTM model
         """
@@ -39,18 +38,52 @@ class MOOC_LSTM_Model(MOOC_Model):
             'seq_len': seq_len,
             'lrate': lrate}
 
-        if(use_enhancements):
-            model = enhanced_lstm_model(self.model_params)
-        else:
-            main_input = Input(shape=(seq_len,), name='main_input', dtype='int32')
-            x = Embedding(input_dim=self.embedding_vocab_size, output_dim=embed_dim, input_length=seq_len, mask_zero=True)(main_input)
-            for i in range(layers):
-                print("Adding layer: " + str(i))
-                x = LSTM(embed_dim, dropout=0.2, return_sequences=True)(x)
-            main_loss = TimeDistributed(Dense(self.embedding_vocab_size, activation='softmax'))(x)
+        main_input = Input(shape=(model_params['seq_len'],), dtype='int32', name='node_ids')
 
-            model = Model(inputs=[main_input], outputs=[main_loss])
+        # Tied Embedding Layer
+        if use_tied_embedding:
+            l2_regularizer = regularizers.l2(1e-6)
+            embedding_layer = ReusableEmbedding(model_params['e_vocab_size'],\
+                model_params['embed_dim'],\
+                input_length=model_params['seq_len'],\
+                name='embedding_layer',\
+                # Regularization is based on paper "A Comparative Study on
+                # Regularization Strategies for Embedding-based Neural Networks"
+                # https://arxiv.org/pdf/1508.03721.pdf
+                embeddings_regularizer=l2_regularizer)
+            output_layer = TiedOutputEmbedding(projection_regularizer=l2_regularizer,\
+                projection_dropout=0.6,\
+                name='word_prediction_logits')
+            output_softmax_layer = Softmax(name='word_predictions')
+            next_step_input, embedding_matrix = embedding_layer(main_input)
+        else:
+            embedding_layer = Embedding(model_params['e_vocab_size'],\
+                    model_params['embed_dim'],\
+                    input_length=model_params['seq_len'],\
+                    mask_zero=True, name='embedding_layer')
+            output_layer = TimeDistributed(Dense(model_params['e_vocab_size'], activation='softmax', name='word_predictions'))
+            next_step_input = embedding_layer(main_input)
+
+        for i in range(model_params['layers']):
+            next_step_input = LSTM(model_params['embed_dim'], dropout=0.2, return_sequences=True, name='LSTM_layer_{}'.format(i))(next_step_input)
+
+        # Tied Embedding Layer
+        if use_tied_embedding:
+            main_loss = output_softmax_layer(output_layer([next_step_input, embedding_matrix]))
+        else:
+            main_loss = output_layer(next_step_input)
+
+        model = Model(inputs=[main_input], outputs=[main_loss])
         
+        # Penalty for confidence of the output distribution, as described in
+        # "Regularizing Neural Networks by Penalizing Confident
+        # Output Distributions" (https://arxiv.org/abs/1701.06548)
+        if confidence_penalty_weight > 0:
+            confidence_penalty = K.mean(
+                confidence_penalty_weight *
+                K.sum(word_predictions * K.log(word_predictions +K.epsilon()), axis=-1))
+            model.add_loss(confidence_penalty)
+
         model.compile(optimizer=RMSprop(lr=lrate), loss='categorical_crossentropy', metrics=['accuracy'])
 
         # load model weights if specified
