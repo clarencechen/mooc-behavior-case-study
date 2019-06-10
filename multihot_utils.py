@@ -111,7 +111,7 @@ class ReusableEmbed_Multihot(Layer):
 
     def build(self, input_shape):
         self.embeddings = self.add_weight(
-            shape=(1, self.input_dim, self.output_dim),
+            shape=(self.input_dim, self.output_dim),
             initializer=self.embeddings_initializer,
             name='embeddings',
             regularizer=self.embeddings_regularizer,
@@ -127,7 +127,7 @@ class ReusableEmbed_Multihot(Layer):
 
     def compute_output_shape(self, input_shape):
         if self.input_length is None:
-            return [input_shape[:-1] + (self.output_dim,), K.input_shape(self.embeddings)[1:]]
+            return [input_shape[:-1] + (self.output_dim,), K.int_shape(self.embeddings)]
         else:
             # input_length can be tuple if input is 3D or higher
             in_lens = to_list(self.input_length, allow_tuple=True)
@@ -143,11 +143,11 @@ class ReusableEmbed_Multihot(Layer):
                             (str(self.input_length), str(input_shape)))
                     elif s1 is None:
                         in_lens[i] = s2
-            return [(input_shape[0],) + tuple(in_lens) + (self.output_dim,), K.int_shape(self.embeddings)[1:]]
+            return [(input_shape[0],) + tuple(in_lens) + (self.output_dim,), K.int_shape(self.embeddings)]
 
     def call(self, inputs):
-        out = K.batch_dot(inputs, self.embeddings, axes=(2, 1))
-        return [out, K.squeeze(self.embeddings, axis=0)]
+        out = K.dot(inputs, self.embeddings)
+        return [out, self.embeddings]
 
     def get_config(self):
         config = {'input_dim': self.input_dim,

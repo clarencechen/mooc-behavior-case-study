@@ -74,8 +74,10 @@ class MOOC_Model(object):
         print('Training model with params: {}'.format(self.model_params))
 
         val_metric = 'val_recall_at_10' if self.multihot_input else 'val_acc'
+        base_logger = keras.callbacks.BaseLogger(stateful_metrics='recall_at_10')
+        prog_logger = keras.callbacks.ProgbarLogger(stateful_metrics='recall_at_10')
         early_stopping = callbacks.EarlyStopping(monitor='val_loss', patience=loss_nonimprove_limit, verbose=1)
-        model_callbacks = [callbacks.TerminateOnNaN(), early_stopping]
+        model_callbacks = [base_logger, prog_logger, callbacks.TerminateOnNaN(), early_stopping]
 
         if use_cosine_lr:
             model_callbacks.append(callbacks.LearningRateScheduler(
@@ -103,7 +105,11 @@ class MOOC_Model(object):
         assert self.model_params is not None, 'Please create model before testing'
         print('Testing model with params: {}'.format(self.model_params))
 
-        test_metrics = self.model.evaluate(test_x, test_y, batch_size=batch_size)
+        base_logger = keras.callbacks.BaseLogger(stateful_metrics='recall_at_10')
+        prog_logger = keras.callbacks.ProgbarLogger(stateful_metrics='recall_at_10')
+        model_callbacks = [base_logger, prog_logger, callbacks.TerminateOnNaN()]
+
+        test_metrics = self.model.evaluate(test_x, test_y, batch_size=batch_size, callbacks=model_callbacks)
         
         for metric_name, metric_value in zip(self.model.metrics_names, test_metrics):
             print('Test {}: {:.8f}'.format(metric_name, metric_value))

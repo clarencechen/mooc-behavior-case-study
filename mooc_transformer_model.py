@@ -32,7 +32,7 @@ class MOOC_Transformer_Model(MOOC_Model):
             'seq_len': seq_len,
             'lrate': lrate}
 
-        model = vanilla_transformer_gpt_model(
+        self.model = vanilla_transformer_gpt_model(
                 max_seq_length=seq_len,
                 vocabulary_size=self.embedding_vocab_size,
                 word_embedding_size=embed_dim,
