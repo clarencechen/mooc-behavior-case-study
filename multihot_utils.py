@@ -23,13 +23,14 @@ def recall_at_10(y_true, y_pred):
     Computes the recall, a metric for multi-label classification of
     how many relevant items are selected.
     """
-    # Tenth largest elements over last axis (output classes)
+    # Tenth largest elements (output probs) over last axis 
     _, indices = tf.nn.top_k(y_pred, 10)
+    # Multihot mask of top ten predictions (output classes) from y_pred
     y_pred_top = K.sum(K.one_hot(indices, K.int_shape(y_pred)[-1]), axis=-2)
-    true_positives = K.sum(K.round(K.clip(y_true * y_pred_top, 0, 1)))
-    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
-    recall = true_positives / (possible_positives + K.epsilon())
-    return recall
+    true_positives = K.sum(K.round(K.clip(y_true[...,-1,:] * y_pred_top[...,-1,:], 0, 1)))
+    possible_positives = K.sum(K.round(K.clip(y_true[...,-1,:], 0, 1)))
+    # recall_at_10 = 1 if there are no positive examples
+    return true_positives / (possible_positives + K.epsilon())
 
 class ReusableEmbed_Multihot(Layer):
     '''
