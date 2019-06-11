@@ -74,8 +74,8 @@ class MOOC_Model(object):
         print('Training model with params: {}'.format(self.model_params))
 
         val_metric = 'val_recall_at_10' if self.multihot_input else 'val_acc'
-        base_logger = keras.callbacks.BaseLogger(stateful_metrics='recall_at_10')
-        prog_logger = keras.callbacks.ProgbarLogger(stateful_metrics='recall_at_10')
+        base_logger = callbacks.BaseLogger(stateful_metrics=['recall_at_10'])
+        prog_logger = callbacks.ProgbarLogger(stateful_metrics=['recall_at_10'])
         early_stopping = callbacks.EarlyStopping(monitor='val_loss', patience=loss_nonimprove_limit, verbose=1)
         model_callbacks = [base_logger, prog_logger, callbacks.TerminateOnNaN(), early_stopping]
 

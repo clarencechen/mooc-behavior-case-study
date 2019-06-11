@@ -4,7 +4,7 @@ import numpy as np
 import keras
 import os
 
-from keras.optimizers import RMSprop
+from keras.optimizers import RMSprop, Adam
 from keras.utils import np_utils
 
 from keras.models import Model
@@ -104,9 +104,9 @@ class MOOC_LSTM_Model(MOOC_Model):
         # "Regularizing Neural Networks by Penalizing Confident
         # Output Distributions" (https://arxiv.org/abs/1701.06548)
         if confidence_penalty_weight > 0:
-            confidence_penalty = K.mean(
-                confidence_penalty_weight *
+            confidence_penalty = K.mean(confidence_penalty_weight *
                 K.sum(word_predictions * K.log(word_predictions +K.epsilon()), axis=-1))
             self.model.add_loss(confidence_penalty)
 
-        self.compile_and_load(RMSprop(lr=lrate), model_load_path)
+        optimizer = Adam(lr=lrate, beta_1=0.9, beta_2=0.999, clipvalue=5.0)
+        self.compile_and_load(optimizer, model_load_path)
