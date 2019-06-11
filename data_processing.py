@@ -154,7 +154,7 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
 
     def expose_x_y(self, seq_len=256, min_len=3, train_proportion=0.63, val_proportion=0.07):
         """
-        Returns X, y numpy arrays based on current_full_indices
+        Returns train, val, and test numpy arrays based on current_full_indices
         """
         x_seq = [seq[:-1] for seq in self.current_full_indices if len(seq) >= min_len]
         padded_x_seq = sequence.pad_sequences(x_windows, maxlen=max_len, padding='post', truncating='post')

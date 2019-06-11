@@ -105,11 +105,7 @@ class MOOC_Model(object):
         assert self.model_params is not None, 'Please create model before testing'
         print('Testing model with params: {}'.format(self.model_params))
 
-        base_logger = keras.callbacks.BaseLogger(stateful_metrics='recall_at_10')
-        prog_logger = keras.callbacks.ProgbarLogger(stateful_metrics='recall_at_10')
-        model_callbacks = [base_logger, prog_logger, callbacks.TerminateOnNaN()]
-
-        test_metrics = self.model.evaluate(test_x, test_y, batch_size=batch_size, callbacks=model_callbacks)
+        test_metrics = self.model.evaluate(test_x, test_y, batch_size=batch_size)
         
         for metric_name, metric_value in zip(self.model.metrics_names, test_metrics):
             print('Test {}: {:.8f}'.format(metric_name, metric_value))

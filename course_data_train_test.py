@@ -4,7 +4,7 @@ from mooc_lstm_model import *
 from mooc_loader import *
 
 dataset_name = 'stu_sem_grade_condense.pkl'
-train_proportion, val_proportion = 0.63, 0.07
+train_proportion, val_proportion = 0.8, 0.1
 
 my_verticals = UCB_Course_Data_Vertical('../../{}'.format(dataset_name))
 sequence_len = my_verticals.num_semesters -1
