@@ -157,20 +157,20 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
         Returns train, val, and test numpy arrays based on current_full_indices
         """
         x_seq = [seq[:-1] for seq in self.current_full_indices if len(seq) >= min_len]
-        padded_x_seq = sequence.pad_sequences(x_windows, maxlen=max_len, padding='post', truncating='post')
+        padded_x_seq = sequence.pad_sequences(x_seq, maxlen=seq_len, padding='post', truncating='post')
         
-        #time_windows = [seq[:-1] for seq in self.current_full_time_spent if len(seq) >= min_len]
-        #padded_time_spent_seq = sequence.pad_sequences(time_windows, maxlen=max_len, padding='post', truncating='post')
+        #time_seq = [seq[:-1] for seq in self.current_full_time_spent if len(seq) >= min_len]
+        #padded_time_spent_seq = sequence.pad_sequences(time_seq, maxlen=seq_len, padding='post', truncating='post')
         
         y_seq = [seq[1:] for seq in self.current_full_indices if len(seq) >= min_len]
-        padded_y_seq = sequence.pad_sequences(y_windows, maxlen=max_len, padding='post', truncating='post')
+        padded_y_seq = sequence.pad_sequences(y_seq, maxlen=seq_len, padding='post', truncating='post')
         
-        y_one_hot = np.zeros((len(padded_y_seq), max_len, int(self.pre_index_data.vertical_index.max() +1)), dtype=np.bool)
+        y_one_hot = np.zeros((len(padded_y_seq), seq_len, int(self.pre_index_data.vertical_index.max() +1)), dtype=np.bool)
         for i, output in enumerate(padded_y_seq):
             for t, vert_index in enumerate(output):
                 y_one_hot[int(i), int(t), int(vert_index)] = 1
         
         train_index, val_index = int(len(padded_x_seq)*train_proportion), int(len(y_one_hot)*(train_proportion +val_proportion))
-        train_x, val_x, test_x = old_X[:train_index], old_X[train_index:val_index], old_X[val_index:] 
-        train_y, val_y, test_y = old_y[:train_index], old_y[train_index:val_index], old_y[val_index:]
+        train_x, val_x, test_x = padded_x_seq[:train_index], padded_x_seq[train_index:val_index], padded_x_seq[val_index:] 
+        train_y, val_y, test_y = y_one_hot[:train_index], y_one_hot[train_index:val_index], y_one_hot[val_index:]
         return train_x, train_y, val_x, val_y, test_x, test_y
