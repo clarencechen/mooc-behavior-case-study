@@ -7,9 +7,9 @@ dataset_name = 'stu_sem_grade_condense.pkl'
 train_proportion, val_proportion = 0.81, 0.09
 
 my_verticals = UCB_Course_Data_Vertical('../../{}'.format(dataset_name))
-sequence_len = my_verticals.num_semesters -1
+sequence_len = my_verticals.num_semesters -3
 vocab_size = my_verticals.num_courses
-train_x, train_y, val_x, val_y, test_x, test_y = my_verticals.expose_course_x_y(train_proportion, val_proportion)
+train_x, train_y, val_x, val_y, test_x, test_y = my_verticals.expose_course_x_y()
 
 #Step 2: Build a Keras LSTM Model and train on data from the Step 2 Bridge.
 print("Now training baseline LSTM Model for {}:".format(dataset_name))
