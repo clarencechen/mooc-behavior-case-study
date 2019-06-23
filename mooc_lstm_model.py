@@ -4,7 +4,7 @@ import numpy as np
 import keras
 import os
 
-from keras.optimizers import RMSprop, Adam
+from keras.optimizers import Adam
 from keras.utils import np_utils
 
 from keras.models import Model
@@ -86,7 +86,9 @@ class MOOC_LSTM_Model(MOOC_Model):
                         output_dim=self.model_params['embed_dim'],
                         input_length=self.model_params['seq_len'],
                         mask_zero=True, name='word_embeddings')
-            output_layer = TimeDistributed(Dense(self.model_params['e_vocab_size'], activation='softmax', name='word_predictions'))
+            output_layer = TimeDistributed(Dense(self.model_params['e_vocab_size'], 
+                activation='softmax', 
+                name='word_predictions'))
             next_step_input = embedding_layer(main_input)
 
         for i in range(self.model_params['layers']):

@@ -57,13 +57,18 @@ class UCB_Course_Data_Vertical(object):
             print('Example grade sequence for student 5: ', self.grade_data[5])
             '''
 
-    def expose_course_x_y(self):
+    def expose_course_x_y(self, train_proportion=0.63, val_proportion=0.07):
         """
         Returns train, val, and test numpy arrays based on course_data array
         """
-
+        '''
         train_x, train_y = self.course_data[:,:-3,:], self.course_data[:,1:-2,:]
         val_x, val_y = self.course_data[:,1:-2,:], self.course_data[:,2:-1,:]
         test_x, test_y = self.course_data[:,2:-1,:], self.course_data[:,3:,:]
+        '''
+
+        train_index, val_index = int(self.num_students*train_proportion), int(self.num_students*(train_proportion +val_proportion))
+        train_x, val_x, test_x = self.course_data[:train_index,:-1,:], self.course_data[train_index:val_index,:-1,:], self.course_data[val_index:,:-1,:] 
+        train_y, val_y, test_y = self.course_data[:train_index,1:,:], self.course_data[train_index:val_index,1:,:], self.course_data[val_index:,1:,:]
 
         return train_x, train_y, val_x, val_y, test_x, test_y
