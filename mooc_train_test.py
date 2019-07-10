@@ -37,7 +37,7 @@ for i in range(6):
     lstm_model.early_stopping_fit(train_x, train_y, val_x, val_y, \
         model_save_path='lstm_weights_tied_embeddings_{}'.format(COURSE_NAMES[i]))
     lstm_model.test_set_eval(test_x, test_y, batch_size=64)
-
+'''
     print("Now training an LSTM Model with Confidence Penalty for {}:".format(COURSE_NAMES[i]))
     lstm_model_2 = MOOC_LSTM_Model(old_embedding_size)
     lstm_model_2.create_lstm_model(lrate=0.01, layers=2, embed_dim=128, seq_len=sequence_max_len, \
@@ -56,3 +56,4 @@ for i in range(6):
     transformer_model.test_set_eval(test_x, test_y, batch_size=128)
 
 #Step 5: Build a recommendation oracle or other downstream task that utilizes the keras model.
+'''
