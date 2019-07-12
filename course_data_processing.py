@@ -61,14 +61,16 @@ class UCB_Course_Data_Vertical(object):
         """
         Returns train, val, and test numpy arrays based on course_data array
         """
-        '''
-        train_x, train_y = self.course_data[:,:-3,:], self.course_data[:,1:-2,:]
-        val_x, val_y = self.course_data[:,1:-2,:], self.course_data[:,2:-1,:]
-        test_x, test_y = self.course_data[:,2:-1,:], self.course_data[:,3:,:]
-        '''
+        train_x = np.concatenate([self.course_data[:,:-3,:], np.zeros((self.num_students, 2, self.num_courses))], axis=1)
+        train_y = np.concatenate([self.course_data[:,1:-2,:], np.zeros((self.num_students, 2, self.num_courses))], axis=1)
+        val_x = np.concatenate([self.course_data[:,:-2,:], np.zeros((self.num_students, 1, self.num_courses))], axis=1)
+        val_y = np.concatenate([self.course_data[:,1:-1,:], np.zeros((self.num_students, 1, self.num_courses))], axis=1)
+        test_x, test_y = self.course_data[:,:-1,:], self.course_data[:,1:,:]
 
+        '''
         train_index, val_index = int(self.num_students*train_proportion), int(self.num_students*(train_proportion +val_proportion))
         train_x, val_x, test_x = self.course_data[:train_index,:-1,:], self.course_data[train_index:val_index,:-1,:], self.course_data[val_index:,:-1,:] 
         train_y, val_y, test_y = self.course_data[:train_index,1:,:], self.course_data[train_index:val_index,1:,:], self.course_data[val_index:,1:,:]
+        '''
 
         return train_x, train_y, val_x, val_y, test_x, test_y

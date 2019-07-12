@@ -129,7 +129,6 @@ def vanilla_transformer_gpt_model(
                 name='transformer' + str(i), num_heads=num_heads,
                 residual_dropout=transformer_dropout,
                 attention_dropout=transformer_dropout,
-                use_masking=True,
                 vanilla_wiring=True)
             (next_step_input))
 

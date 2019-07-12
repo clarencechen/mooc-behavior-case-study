@@ -123,7 +123,7 @@ class ReusableEmbed_Multihot(Layer):
     def compute_mask(self, inputs, mask=None):
         if not self.mask_zero:
             return None
-        output_mask = K.not_equal(K.sum(inputs, axis=2, keepdims=True), 0)
+        output_mask = K.not_equal(K.sum(inputs, axis=-1, keepdims=True), 0)
         return [output_mask, None]
 
     def compute_output_shape(self, input_shape):

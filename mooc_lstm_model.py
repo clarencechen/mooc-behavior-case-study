@@ -52,6 +52,7 @@ class MOOC_LSTM_Model(MOOC_Model):
                     input_dim=self.model_params['e_vocab_size'],
                     output_dim=self.model_params['embed_dim'],
                     input_length=self.model_params['seq_len'],
+                    mask_zero=True,
                     name='multihot_embeddings',
                     # Regularization is based on paper "A Comparative Study on
                     # Regularization Strategies for Embedding-based Neural Networks"
