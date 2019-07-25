@@ -4,9 +4,7 @@ import numpy as np
 import keras
 import os
 
-from keras.utils import np_utils
-
-from keras.models import Model
+from keras.utils import np_utils, plot_model
 
 import keras.callbacks as callbacks
 
@@ -33,20 +31,22 @@ class MOOC_Model(object):
             self.embedding_vocab_size = int(embedding_vocab_size) +1
 
     def set_model_name(self, name):
-        if not self.model_params:
-            print("WARNING: Create model before setting model name.")
-            return -1
+        assert self.model_params is not None, 'Please create model before setting model name'
         self.model_name = name + self.model_params_to_string
 
     @property
     def model_params_to_string(self):
         return '_{layers!s}_{seq_len!s}_{embed_dim!s}_{e_vocab_size!s}_{lrate!s}'.format(**self.model_params)
 
+    def plot_model(self, **kwargs):
+        assert self.model_params is not None, 'Please create model before visualization'
+        return plot_model(self.model, to_file='mooc_model_topology_{}.png'.format(self.model_params_to_string), **kwargs)
+
     def compile_and_load(self, optimizer, model_load_path=None):
         '''
         Compile model with optimizer and load weights saved from model_load_path
         '''
-        assert self.model_params is not None, 'Please create model before training'
+        assert self.model_params is not None, 'Please create model before compiling'
         print('Compiling model with params: {}'.format(self.model_params))
 
         if self.multihot_input:

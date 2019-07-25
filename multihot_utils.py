@@ -28,9 +28,10 @@ def recall_at_10(y_true, y_pred):
     # Multihot mask of top ten predictions (output classes) from y_pred
     y_pred_top = K.sum(K.one_hot(indices, K.int_shape(y_pred)[-1]), axis=-2)
     true_positives = K.sum(K.round(K.clip(y_true[...,-1,:] * y_pred_top[...,-1,:], 0, 1)))
+    
     possible_positives = K.sum(K.round(K.clip(y_true[...,-1,:], 0, 1)))
     # recall_at_10 = 1 if there are no positive examples
-    return true_positives / (possible_positives + K.epsilon())
+    return (true_positives + K.epsilon())/ (possible_positives + K.epsilon())
 
 class ReusableEmbed_Multihot(Layer):
     '''

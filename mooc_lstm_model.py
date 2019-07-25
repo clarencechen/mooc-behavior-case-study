@@ -52,7 +52,6 @@ class MOOC_LSTM_Model(MOOC_Model):
                     input_dim=self.model_params['e_vocab_size'],
                     output_dim=self.model_params['embed_dim'],
                     input_length=self.model_params['seq_len'],
-                    mask_zero=True,
                     name='multihot_embeddings',
                     # Regularization is based on paper "A Comparative Study on
                     # Regularization Strategies for Embedding-based Neural Networks"
@@ -62,7 +61,7 @@ class MOOC_LSTM_Model(MOOC_Model):
                     input_dim=self.model_params['e_vocab_size'],
                     output_dim=self.model_params['embed_dim'],
                     input_length=self.model_params['seq_len'],
-                    name='word_embeddings',
+                    name='token_embeddings',
                     # Regularization is based on paper "A Comparative Study on
                     # Regularization Strategies for Embedding-based Neural Networks"
                     # https://arxiv.org/pdf/1508.03721.pdf
@@ -71,8 +70,8 @@ class MOOC_LSTM_Model(MOOC_Model):
             output_layer = TiedOutputEmbedding(
                 projection_regularizer=l2_regularizer,
                 projection_dropout=0.6,
-                name='word_prediction_logits')
-            output_softmax_layer = Softmax(name='word_predictions')
+                name='next_step_logits')
+            output_softmax_layer = Softmax(name='next_step_predictions')
             next_step_input, embedding_matrix = embedding_layer(main_input)
         # Regular Embedding Layer
         else:
@@ -86,10 +85,10 @@ class MOOC_LSTM_Model(MOOC_Model):
                         input_dim=self.model_params['e_vocab_size'],
                         output_dim=self.model_params['embed_dim'],
                         input_length=self.model_params['seq_len'],
-                        mask_zero=True, name='word_embeddings')
+                        name='token_embeddings')
             output_layer = TimeDistributed(Dense(self.model_params['e_vocab_size'], 
                 activation='softmax', 
-                name='word_predictions'))
+                name='next_step_predictions'))
             next_step_input = embedding_layer(main_input)
 
         for i in range(self.model_params['layers']):
