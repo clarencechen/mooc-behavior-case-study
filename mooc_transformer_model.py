@@ -17,20 +17,13 @@ from mooc_model import *
 
 class MOOC_Transformer_Model(MOOC_Model):
     """
-    
+    Represents a Transformer Model and accompanying metadata
     """
-    def __init__(self, embedding_vocab_size, **kwargs):
-        super().__init__(embedding_vocab_size, **kwargs)
-
-    def create_basic_transformer_model(self, lrate=2e-3, layers=4, embed_dim=128, seq_len=256, model_load_path=None):
+    def __init__(self, embedding_vocab_size, embed_dim=128, seq_len=256, layers=4, lrate=2e-3, multihot_input=False, model_load_path=None, **kwargs):
         """
-        Returns a Vanilla Transformer model
+        Builds and Compiles a Vanilla Transformer model
         """
-        self.model_params = {'layers': layers,
-            'embed_dim': embed_dim,
-            'e_vocab_size': self.embedding_vocab_size,
-            'seq_len': seq_len,
-            'lrate': lrate}
+        super().__init__(embedding_vocab_size, embed_dim, seq_len, layers, lrate, multihot_input, **kwargs)
 
         self.model = vanilla_transformer_gpt_model(
                 max_seq_length=seq_len,

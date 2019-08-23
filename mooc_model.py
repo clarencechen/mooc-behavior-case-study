@@ -15,7 +15,7 @@ class MOOC_Model(object):
     """
     Base Class for Model
     """
-    def __init__(self, embedding_vocab_size, multihot_input=False):
+    def __init__(self, embedding_vocab_size, embed_dim, seq_len, layers, lrate, multihot_input, **kwargs):
         """
         Initialize miscellaneous model attributes
         """
@@ -25,28 +25,27 @@ class MOOC_Model(object):
         self.best_accuracy = None
 
         self.multihot_input = multihot_input
-        if multihot_input:
-            self.embedding_vocab_size = int(embedding_vocab_size)
-        else:
-            self.embedding_vocab_size = int(embedding_vocab_size) +1
+        
+        self.model_params = {'layers': layers,
+            'embed_dim': embed_dim,
+            'vocab_size': (int(embedding_vocab_size) if multihot_input else int(embedding_vocab_size +1)),
+            'seq_len': seq_len,
+            'lrate': lrate}
 
     def set_model_name(self, name):
-        assert self.model_params is not None, 'Please create model before setting model name'
         self.model_name = name + self.model_params_to_string
 
     @property
     def model_params_to_string(self):
-        return '_{layers!s}_{seq_len!s}_{embed_dim!s}_{e_vocab_size!s}_{lrate!s}'.format(**self.model_params)
+        return '_{layers!s}_{seq_len!s}_{embed_dim!s}_{vocab_size!s}_{lrate!s}'.format(**self.model_params)
 
     def plot_model(self, **kwargs):
-        assert self.model_params is not None, 'Please create model before visualization'
         return plot_model(self.model, to_file='mooc_model_topology_{}.png'.format(self.model_params_to_string), **kwargs)
 
     def compile_and_load(self, optimizer, model_load_path=None):
         '''
         Compile model with optimizer and load weights saved from model_load_path
         '''
-        assert self.model_params is not None, 'Please create model before compiling'
         print('Compiling model with params: {}'.format(self.model_params))
 
         if self.multihot_input:
@@ -70,7 +69,6 @@ class MOOC_Model(object):
         '''
         Train model with early stopping condition
         '''
-        assert self.model_params is not None, 'Please create model before training'
         print('Training model with params: {}'.format(self.model_params))
 
         val_metric = 'val_recall_at_10' if self.multihot_input else 'val_acc'
@@ -86,7 +84,10 @@ class MOOC_Model(object):
             model_callbacks.append(callbacks.ModelCheckpoint(model_save_path, monitor=val_metric, mode='max', save_best_only=True, verbose=True))
         if tensorboard_log_path is not None:
             model_callbacks.append(callbacks.TensorBoard(tensorboard_log_path, \
-                histogram_freq=1, batch_size=batch_size, write_grads=True, write_images=True))
+                histogram_freq=1, batch_size=batch_size, write_grads=True, write_images=True, \
+                embeddings_freq=10, \
+                embeddings_layer_names=('multihot_embeddings' if self.multihot_input else 'token_embeddings'), \
+                embeddings_data=np.eye(self.model_params['vocab_size'])))
 
         self.model_history = self.model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=batch_size, epochs=epoch_limit, callbacks=model_callbacks)
 
@@ -102,7 +103,6 @@ class MOOC_Model(object):
         '''
         Evaluate model using test set
         '''
-        assert self.model_params is not None, 'Please create model before testing'
         print('Testing model with params: {}'.format(self.model_params))
 
         test_metrics = self.model.evaluate(test_x, test_y, batch_size=batch_size)

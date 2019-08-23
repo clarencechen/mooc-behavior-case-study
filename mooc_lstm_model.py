@@ -23,24 +23,17 @@ from mooc_model import *
 
 class MOOC_LSTM_Model(MOOC_Model):
     """
-    
+    Represents an LSTM Model and accompanying metadata
     """
-    def __init__(self, embedding_vocab_size, **kwargs):
-        super().__init__(embedding_vocab_size, **kwargs)
-
-    def create_lstm_model(self, lrate=0.01, layers=2, embed_dim=128, seq_len=256, confidence_penalty_weight=0, use_tied_embedding=False, lstm_dropout=0.2, model_load_path=None):
+    def __init__(self, embedding_vocab_size, embed_dim=128, seq_len=256, layers=2, lrate=0.01, multihot_input=False, confidence_penalty_weight=0, use_tied_embedding=False, lstm_dropout=0.2, model_load_path=None, **kwargs):
         """
-        Returns a LSTM model
+        Builds and Compiles an LSTM model
         """
-        self.model_params = {'layers': layers,
-            'embed_dim': embed_dim,
-            'e_vocab_size': self.embedding_vocab_size,
-            'seq_len': seq_len,
-            'lrate': lrate}
+        super().__init__(embedding_vocab_size, embed_dim, seq_len, layers, lrate, multihot_input, **kwargs)
 
         # Input Layer
         if self.multihot_input:
-            main_input = Input(shape=(self.model_params['seq_len'], self.model_params['e_vocab_size']), dtype='float', name='onehot_ids')
+            main_input = Input(shape=(self.model_params['seq_len'], self.model_params['vocab_size']), dtype='float', name='onehot_ids')
         else:
             main_input = Input(shape=(self.model_params['seq_len'],), dtype='int32', name='node_ids')
 
@@ -49,7 +42,7 @@ class MOOC_LSTM_Model(MOOC_Model):
             l2_regularizer = keras.regularizers.l2(1e-6)
             if self.multihot_input:
                 embedding_layer = ReusableEmbed_Multihot(
-                    input_dim=self.model_params['e_vocab_size'],
+                    input_dim=self.model_params['vocab_size'],
                     output_dim=self.model_params['embed_dim'],
                     input_length=self.model_params['seq_len'],
                     name='multihot_embeddings',
@@ -58,7 +51,7 @@ class MOOC_LSTM_Model(MOOC_Model):
                     embeddings_regularizer=l2_regularizer)
             else:
                 embedding_layer = ReusableEmbedding(
-                    input_dim=self.model_params['e_vocab_size'],
+                    input_dim=self.model_params['vocab_size'],
                     output_dim=self.model_params['embed_dim'],
                     input_length=self.model_params['seq_len'],
                     name='token_embeddings',
@@ -82,11 +75,11 @@ class MOOC_LSTM_Model(MOOC_Model):
                         name='multihot_embeddings'))
             else:
                 embedding_layer = Embedding(
-                        input_dim=self.model_params['e_vocab_size'],
+                        input_dim=self.model_params['vocab_size'],
                         output_dim=self.model_params['embed_dim'],
                         input_length=self.model_params['seq_len'],
                         name='token_embeddings')
-            output_layer = TimeDistributed(Dense(self.model_params['e_vocab_size'], 
+            output_layer = TimeDistributed(Dense(self.model_params['vocab_size'], 
                 activation='softmax', 
                 name='next_step_predictions'))
             next_step_input = embedding_layer(main_input)
