@@ -12,7 +12,7 @@ dataset_names = ['{}{}_parsed_v2.tsv'.format(DATA_DIR, course) for course in COU
 sequence_max_len = 256
 train_proportion, val_proportion = 0.63, 0.07
 
-for i in range(1):
+for i in range(6):
 
     my_verticals = Vertical_Output(dataset_names[i], HAS_HEADER[i])
 
@@ -27,8 +27,8 @@ for i in range(1):
     print("Example index sequence for student 5: ", my_verticals.current_full_indices[5])
     print("Example time_spent sequence for student 5: ", my_verticals.current_full_time_spent[5])
 
-    train_x, train_y, val_x, val_y, test_x, test_y = my_verticals.expose_x_y(seq_len=sequence_max_len, train_proportion=0.63, val_proportion=0.07)
-    
+    train_x, train_y, val_x, val_y, test_x, test_y = my_verticals.expose_x_y(seq_len=sequence_max_len, train_proportion=train_proportion, val_proportion=val_proportion)
+    '''
     #Step 2: Build a Keras LSTM Model and train on data from the Step 2 Bridge.
     print("Now training a Baseline LSTM Model for {}:".format(COURSE_NAMES[i]))
     lstm_model = MOOC_LSTM_Model(old_embedding_size, embed_dim=128, seq_len=sequence_max_len, layers=2, \
@@ -37,7 +37,7 @@ for i in range(1):
         model_save_path='lstm_weights_baseline_{}'.format(COURSE_NAMES[i]), \
         tensorboard_log_path='./tensorboard')
     lstm_model.test_set_eval(test_x, test_y, batch_size=64)
-    
+    '''
     print("Now training an LSTM Model with Tied Embeddings for {}:".format(COURSE_NAMES[i]))
     lstm_tied_embeddings = MOOC_LSTM_Model(old_embedding_size, embed_dim=128, seq_len=sequence_max_len, layers=2, \
         lrate=0.01, model_load_path=None, confidence_penalty_weight=0, use_tied_embedding=True)

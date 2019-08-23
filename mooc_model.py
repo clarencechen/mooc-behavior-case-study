@@ -10,6 +10,7 @@ import keras.callbacks as callbacks
 
 from transformer_utils import load_optimizer_weights, CosineLRSchedule
 from multihot_utils import recall_at_10
+from tensorboard_utils import TensorBoard_TimestepEmbeddings
 
 class MOOC_Model(object):
     """
@@ -72,10 +73,14 @@ class MOOC_Model(object):
         print('Training model with params: {}'.format(self.model_params))
 
         val_metric = 'val_recall_at_10' if self.multihot_input else 'val_acc'
-        base_logger = callbacks.BaseLogger(stateful_metrics=['recall_at_10'])
-        prog_logger = callbacks.ProgbarLogger(stateful_metrics=['recall_at_10'])
         early_stopping = callbacks.EarlyStopping(monitor='val_loss', patience=loss_nonimprove_limit, verbose=1)
-        model_callbacks = [base_logger, prog_logger, callbacks.TerminateOnNaN(), early_stopping]
+
+        if self.multihot_input:
+            base_logger = callbacks.BaseLogger(stateful_metrics=['recall_at_10'])
+            prog_logger = callbacks.ProgbarLogger(stateful_metrics=['recall_at_10'])
+            model_callbacks = [base_logger, prog_logger, callbacks.TerminateOnNaN(), early_stopping]
+        else:
+            model_callbacks = [callbacks.TerminateOnNaN(), early_stopping]
 
         if use_cosine_lr:
             model_callbacks.append(callbacks.LearningRateScheduler(
@@ -83,11 +88,11 @@ class MOOC_Model(object):
         if model_save_path is not None:
             model_callbacks.append(callbacks.ModelCheckpoint(model_save_path, monitor=val_metric, mode='max', save_best_only=True, verbose=True))
         if tensorboard_log_path is not None:
-            model_callbacks.append(callbacks.TensorBoard(tensorboard_log_path, \
+            model_callbacks.append(TensorBoard_TimestepEmbeddings(tensorboard_log_path, \
                 histogram_freq=1, batch_size=batch_size, write_grads=True, write_images=True, \
                 embeddings_freq=10, \
                 embeddings_layer_names=('multihot_embeddings' if self.multihot_input else 'token_embeddings'), \
-                embeddings_data=np.eye(self.model_params['vocab_size'])))
+                embeddings_data=val_x))
 
         self.model_history = self.model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=batch_size, epochs=epoch_limit, callbacks=model_callbacks)
 
