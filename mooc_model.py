@@ -94,7 +94,6 @@ class MOOC_Model(object):
                 embeddings_data=val_x))
 
         self.model_history = self.model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=batch_size, epochs=epoch_limit, callbacks=model_callbacks)
-
         try:
             self.best_accuracy = max(self.model_history.history[val_metric])
             print("Best accuracy:", self.best_accuracy)
