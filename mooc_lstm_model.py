@@ -13,8 +13,8 @@ from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM
 from keras.layers.wrappers import TimeDistributed
 
-from keras_transformer.extras import ReusableEmbedding, TiedOutputEmbedding
-from multihot_utils import ReusableEmbed_Multihot
+from embedding_utils import TiedOutputLayer
+from multihot_utils import MultihotEmbedding
 
 import keras.callbacks as callbacks
 import keras.backend as K
@@ -41,7 +41,7 @@ class MOOC_LSTM_Model(MOOC_Model):
         if use_tied_embedding:
             l2_regularizer = keras.regularizers.l2(1e-6)
             if self.multihot_input:
-                embedding_layer = ReusableEmbed_Multihot(
+                embedding_layer = MultihotEmbedding(
                     input_dim=self.model_params['vocab_size'],
                     output_dim=self.model_params['embed_dim'],
                     input_length=self.model_params['seq_len'],
@@ -50,7 +50,7 @@ class MOOC_LSTM_Model(MOOC_Model):
                     # Regularization Strategies for Embedding-based Neural Networks"
                     embeddings_regularizer=l2_regularizer)
             else:
-                embedding_layer = ReusableEmbedding(
+                embedding_layer = Embedding(
                     input_dim=self.model_params['vocab_size'],
                     output_dim=self.model_params['embed_dim'],
                     input_length=self.model_params['seq_len'],
@@ -60,12 +60,12 @@ class MOOC_LSTM_Model(MOOC_Model):
                     # https://arxiv.org/pdf/1508.03721.pdf
                     embeddings_regularizer=l2_regularizer)
 
-            output_layer = TiedOutputEmbedding(
+            output_layer = TiedOutputLayer(embedding_layer,
+                activation='softmax',
                 projection_regularizer=l2_regularizer,
                 projection_dropout=0.6,
-                name='next_step_logits')
-            output_softmax_layer = Softmax(name='next_step_predictions')
-            next_step_input, embedding_matrix = embedding_layer(main_input)
+                name='next_step_predictions')
+
         # Regular Embedding Layer
         else:
             if self.multihot_input:
@@ -79,19 +79,15 @@ class MOOC_LSTM_Model(MOOC_Model):
                         output_dim=self.model_params['embed_dim'],
                         input_length=self.model_params['seq_len'],
                         name='token_embeddings')
-            output_layer = TimeDistributed(Dense(self.model_params['vocab_size'], 
+            output_layer = TimeDistributed(Dense(
+                units=self.model_params['vocab_size'], 
                 activation='softmax', 
                 name='next_step_predictions'))
-            next_step_input = embedding_layer(main_input)
 
+        next_step_input = embedding_layer(main_input)
         for i in range(self.model_params['layers']):
             next_step_input = LSTM(self.model_params['embed_dim'], dropout=0.2, return_sequences=True, name='LSTM_layer_{}'.format(i))(next_step_input)
-
-        # Tied Embedding Layer
-        if use_tied_embedding:
-            word_predictions = output_softmax_layer(output_layer([next_step_input, embedding_matrix]))
-        else:
-            word_predictions = output_layer(next_step_input)
+        word_predictions = output_layer(next_step_input)
 
         self.model = Model(inputs=[main_input], outputs=[word_predictions])
         

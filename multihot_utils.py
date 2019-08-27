@@ -1,5 +1,5 @@
 """
-Reusable Embedding similar to that from package 'keras_transformer', but tailored to accept multi-hot input instead of token IDs.
+Multihot Embedding similar to that from package 'keras_transformer', but tailored to accept multi-hot input instead of token IDs.
 """
 
 from __future__ import absolute_import
@@ -13,9 +13,13 @@ from keras import backend as K
 from keras import initializers
 from keras import regularizers
 from keras import constraints
+
+from keras.layers import Embedding
 from keras.engine.base_layer import Layer
 from keras.legacy import interfaces
+
 from keras.utils.generic_utils import to_list
+from keras.utils import get_custom_objects
 
 def recall_at_10(y_true, y_pred):
     """Recall metric.
@@ -33,7 +37,7 @@ def recall_at_10(y_true, y_pred):
     # recall_at_10 = 1 if there are no positive examples
     return (true_positives + K.epsilon())/ (possible_positives + K.epsilon())
 
-class ReusableEmbed_Multihot(Layer):
+class MultihotEmbedding(Embedding):
     '''
     Turns positive integers (indexes) into dense vectors of fixed size.
     eg. [[4], [20]] -> [[0.25, 0.1], [0.6, -0.2]]
@@ -41,7 +45,7 @@ class ReusableEmbed_Multihot(Layer):
     # Example
     ```python
       model = Sequential()
-      model.add(ReusableEmbed_Multihot(1000, 64, input_length=10))
+      model.add(MultihotEmbedding(1000, 64, input_length=10))
       # the model will take as input an integer matrix of size (batch, input_length).
       # the largest integer (i.e. word index) in the input should be
       # no larger than 999 (vocabulary size).
@@ -99,7 +103,7 @@ class ReusableEmbed_Multihot(Layer):
                 kwargs['input_shape'] = (input_length, input_dim)
             else:
                 kwargs['input_shape'] = (None, input_dim)
-        super(ReusableEmbed_Multihot, self).__init__(**kwargs)
+        super(Embedding, self).__init__(**kwargs)
 
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -111,16 +115,6 @@ class ReusableEmbed_Multihot(Layer):
         self.supports_masking = mask_zero
         self.input_length = input_length
 
-    def build(self, input_shape):
-        self.embeddings = self.add_weight(
-            shape=(self.input_dim, self.output_dim),
-            initializer=self.embeddings_initializer,
-            name='embeddings',
-            regularizer=self.embeddings_regularizer,
-            constraint=self.embeddings_constraint,
-            dtype=self.dtype)
-        self.built = True
-
     def compute_mask(self, inputs, mask=None):
         if not self.mask_zero:
             return None
@@ -129,7 +123,7 @@ class ReusableEmbed_Multihot(Layer):
 
     def compute_output_shape(self, input_shape):
         if self.input_length is None:
-            return [input_shape[:-1] + (self.output_dim,), K.int_shape(self.embeddings)]
+            return input_shape[:-1] + (self.output_dim,)
         else:
             # input_length can be tuple if input is 3D or higher
             in_lens = to_list(self.input_length, allow_tuple=True)
@@ -145,24 +139,12 @@ class ReusableEmbed_Multihot(Layer):
                             (str(self.input_length), str(input_shape)))
                     elif s1 is None:
                         in_lens[i] = s2
-            return [(input_shape[0],) + tuple(in_lens) + (self.output_dim,), K.int_shape(self.embeddings)]
+            return (input_shape[0],) + tuple(in_lens) + (self.output_dim,)
 
     def call(self, inputs):
         out = K.dot(inputs, self.embeddings)
-        return [out, self.embeddings]
+        return out
 
-    def get_config(self):
-        config = {'input_dim': self.input_dim,
-                  'output_dim': self.output_dim,
-                  'embeddings_initializer':
-                      initializers.serialize(self.embeddings_initializer),
-                  'embeddings_regularizer':
-                      regularizers.serialize(self.embeddings_regularizer),
-                  'activity_regularizer':
-                      regularizers.serialize(self.activity_regularizer),
-                  'embeddings_constraint':
-                      constraints.serialize(self.embeddings_constraint),
-                  'mask_zero': self.mask_zero,
-                  'input_length': self.input_length}
-        base_config = super(ReusableEmbed_Multihot, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
+get_custom_objects().update({
+    'MultihotEmbedding': MultihotEmbedding,
+})
