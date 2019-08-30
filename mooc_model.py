@@ -3,6 +3,7 @@ import json
 import numpy as np
 import keras
 import os
+import io
 
 from keras.utils import np_utils, plot_model
 
@@ -88,10 +89,7 @@ class MOOC_Model(object):
             model_callbacks.append(callbacks.ModelCheckpoint(model_save_path, monitor=val_metric, mode='max', save_best_only=True, verbose=True))
         if tensorboard_log_path is not None:
             model_callbacks.append(callbacks.TensorBoard(tensorboard_log_path, \
-                histogram_freq=1, batch_size=batch_size, write_grads=True, write_images=True, \
-                embeddings_freq=10, \
-                embeddings_layer_names=('multihot_embeddings' if self.multihot_input else 'token_embeddings'), \
-                embeddings_data=val_x))
+                histogram_freq=1, batch_size=batch_size, write_grads=True, write_images=True))
 
         self.model_history = self.model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=batch_size, epochs=epoch_limit, callbacks=model_callbacks)
         try:
@@ -112,3 +110,27 @@ class MOOC_Model(object):
         
         for metric_name, metric_value in zip(self.model.metrics_names, test_metrics):
             print('Test {}: {:.8f}'.format(metric_name, metric_value))
+
+    def extract_embedding_weights(self, weights_save_path, format='tsv'):
+        input_embedding_name = 'multihot_embeddings' if self.multihot_input else 'token_embeddings'
+        input_weights = self.model.get_layer(input_embedding_name).get_weights()[0]
+        output_weights = self.model.get_layer('word_predictions').get_weights()[0]
+        
+        out_m = io.open(weights_save_path + '_tb_metadata.tsv', 'w', encoding='utf-8')
+        out_v = io.open(weights_save_path + '_input_embedding.tsv', 'w', encoding='utf-8')
+        out_h = io.open(weights_save_path + '_output_embedding.tsv', 'w', encoding='utf-8')
+
+        # compute W ~ AL^T for tied embeddings
+        if output_weights.shape == (self.model_params['embed_dim'], self.model_params['embed_dim']):
+            output_weights = np.matmul(output_weights, input_weights.T)
+
+        for token in range(self.model_params['vocab_size']):
+            out_m.write(token + "\n")
+            out_v.write('\t'.join([str(x) for x in input_weights[token]]) + "\n")
+            out_h.write('\t'.join([str(x) for x in output_weights[token]]) + "\n")
+        
+        out_v.close()
+        out_m.close()
+        out_h.close()
+
+        

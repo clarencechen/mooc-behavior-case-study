@@ -61,12 +61,12 @@ class MOOC_LSTM_Model(MOOC_Model):
                 activation='softmax',
                 projection_regularizer=l2_regularizer,
                 projection_dropout=0.6,
-                name='next_step_predictions')
+                name='word_predictions')
         # Regular Output Layer
         else:
             output_layer = TimeDistributed(Dense(units=self.model_params['vocab_size'], 
                 activation='softmax'),
-                name='next_step_predictions')
+                name='word_predictions')
 
         next_step_input = embedding_layer(main_input)
         for i in range(self.model_params['layers']):

@@ -14,7 +14,7 @@ dataset_names = ['{}{}_parsed_v2.tsv'.format(DATA_DIR, course) for course in COU
 sequence_max_len = 256
 train_proportion, val_proportion = 0.63, 0.07
 
-for i in range(2, 6):
+for i in range(3, 6):
 
     my_verticals = Vertical_Output(dataset_names[i], HAS_HEADER[i])
 
@@ -39,6 +39,7 @@ for i in range(2, 6):
         model_save_path='lstm_weights_baseline_{}'.format(COURSE_NAMES[i]), \
         tensorboard_log_path='./tensorboard')
     lstm_model.test_set_eval(test_x, test_y, batch_size=64)
+    lstm_model.extract_embedding_weights(model_save_path='lstm_weights_baseline_{}'.format(COURSE_NAMES[i]))
     keras.backend.clear_session()
 
     print("Now training an LSTM Model with Tied Embeddings for {}:".format(COURSE_NAMES[i]))
@@ -48,6 +49,7 @@ for i in range(2, 6):
         model_save_path='lstm_weights_tied_embeddings_{}'.format(COURSE_NAMES[i]), \
         tensorboard_log_path='./tensorboard')
     lstm_tied_embeddings.test_set_eval(test_x, test_y, batch_size=64)
+    lstm_model.extract_embedding_weights('lstm_weights_tied_embeddings_{}'.format(COURSE_NAMES[i]))
     keras.backend.clear_session()
         
     #Step 3: Build a Keras Transformer Model and train on same data as the LSTM from Step 2.
@@ -57,5 +59,6 @@ for i in range(2, 6):
     transformer_model.early_stopping_fit(train_x, train_y, val_x, val_y, batch_size=128, \
         use_cosine_lr=True, model_save_path='transformer_weights_{}'.format(COURSE_NAMES[i]))
     transformer_model.test_set_eval(test_x, test_y, batch_size=128)
+    lstm_model.extract_embedding_weights('transformer_weights_{}'.format(COURSE_NAMES[i]))
     keras.backend.clear_session()
     
