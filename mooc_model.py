@@ -6,10 +6,9 @@ import os
 import io
 
 from keras.utils import np_utils, plot_model
-
 import keras.callbacks as callbacks
 
-from transformer_utils import load_optimizer_weights, CosineLRSchedule
+from misc_utils import load_optimizer_weights, CosineLRSchedule
 from multihot_utils import recall_at_10
 
 class MOOC_Model(object):
@@ -111,26 +110,25 @@ class MOOC_Model(object):
         for metric_name, metric_value in zip(self.model.metrics_names, test_metrics):
             print('Test {}: {:.8f}'.format(metric_name, metric_value))
 
-    def extract_embedding_weights(self, weights_save_path, format='tsv'):
+    def extract_embedding_weights(self, save_path, format='tsv'):
         input_embedding_name = 'multihot_embeddings' if self.multihot_input else 'token_embeddings'
         input_weights = self.model.get_layer(input_embedding_name).get_weights()[0]
         output_weights = self.model.get_layer('word_predictions').get_weights()[0]
         
-        out_m = io.open(weights_save_path + '_tb_metadata.tsv', 'w', encoding='utf-8')
-        out_v = io.open(weights_save_path + '_input_embedding.tsv', 'w', encoding='utf-8')
-        out_h = io.open(weights_save_path + '_output_embedding.tsv', 'w', encoding='utf-8')
+        out_v = io.open(save_path + '_input_embedding.tsv', 'w', encoding='utf-8')
+        out_h = io.open(save_path + '_output_embedding.tsv', 'w', encoding='utf-8')
 
         # compute W ~ AL^T for tied embeddings
         if output_weights.shape == (self.model_params['embed_dim'], self.model_params['embed_dim']):
-            output_weights = np.matmul(output_weights, input_weights.T)
+            output_weights = np.matmul(output_weights, input_weights.T).T
+        else:
+            output_weights = output_weights.T
 
         for token in range(self.model_params['vocab_size']):
-            out_m.write(token + "\n")
             out_v.write('\t'.join([str(x) for x in input_weights[token]]) + "\n")
             out_h.write('\t'.join([str(x) for x in output_weights[token]]) + "\n")
         
         out_v.close()
-        out_m.close()
         out_h.close()
 
         

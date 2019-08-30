@@ -11,8 +11,6 @@ from keras.models import Model
 
 from transformer_models import vanilla_transformer_gpt_model
 
-import keras.callbacks as callbacks
-
 from mooc_model import *
 
 class MOOC_Transformer_Model(MOOC_Model):

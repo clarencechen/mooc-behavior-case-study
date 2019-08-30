@@ -35,7 +35,7 @@ def recall_at_10(y_true, y_pred):
     
     possible_positives = K.sum(K.round(K.clip(y_true[...,-1,:], 0, 1)))
     # recall_at_10 = 1 if there are no positive examples
-    return (true_positives + K.epsilon())/ (possible_positives + K.epsilon())
+    return (true_positives + K.epsilon())/(possible_positives + K.epsilon())
 
 class MultihotEmbedding(Embedding):
     '''
@@ -118,8 +118,8 @@ class MultihotEmbedding(Embedding):
     def compute_mask(self, inputs, mask=None):
         if not self.mask_zero:
             return None
-        output_mask = K.not_equal(K.sum(inputs, axis=-1, keepdims=True), 0)
-        return [output_mask, None]
+        output_mask = K.not_equal(K.sum(inputs, axis=-1), 0)
+        return output_mask
 
     def compute_output_shape(self, input_shape):
         if self.input_length is None:

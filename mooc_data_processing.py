@@ -5,56 +5,50 @@ import json
 import numpy as np
 import csv
 import abc
+import io
 
 def process_time(time):
     return datetime.datetime.strptime(time[:-6], '%Y-%m-%dT%H:%M:%S.%f' if '.' in time[:-6] else '%Y-%m-%dT%H:%M:%S')
 
-class Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices(object):
-    
-    @abc.abstractmethod
-    def __init__(self, input_file):
-        pass
-
-    @abc.abstractmethod
-    def expose_x_y(self):
-        pass
-
 def construct_vertical(sequential, chapter, vertical=-1):
     return '/' + chapter + '/' + sequential + '/' + str(vertical)
 
-class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
+def write_tb_metadata(course_name, raw_data):
+    metadata_list = raw_data[['vertical_index', 'chapter_title', 'sequential_title', 'vertical_title']].sort_values('vertical_index').drop_duplicates()
+    header = ['Vertical Index', 'Chapter Title', 'Section Title', 'Vertical Title']
+    zero_token = ['0', 'N/A', 'N/A', 'Not In Course']
+
+    file_obj = io.open('./embeddings/metadata/{}_tb_metadata.tsv'.format(course_name), 'w', encoding='utf-8')
+    file_obj.write('\t'.join(header) + '\n')
+    file_obj.write('\t'.join(zero_token) + '\n')
+    metadata_list.to_csv(file_obj, sep='\t', columns=['vertical_index', 'chapter_title', 'sequential_title', 'vertical_title'], header=False, index=False)
+    file_obj.close()
+
+class Vertical_Output():
     """
     Accepts MOOC_Data object, which contains a sorted_data attribute as well as a course axis
     Creates a new internal DataFrame named pre_index_data that contains columns for userid, timestamp, and unique representation of action. Can contain additional columns.
     The unique representation of action is what should be converted to indices (for output into embedding layer).
     Outputs X y used to train model, along with vocab_size for keras model.
     """
-    def __init__(self, input_file, has_header):
+    def __init__(self, course_name, has_header, write_metadata=False):
+
+        input_file = '{}{}_parsed_v2.tsv'.format('../../mooc-data/', course_name)
         if has_header:
             raw_data = pd.read_csv(input_file, delimiter='\t', \
-                usecols=['username', 'vertical_index', 'basic_type', 'time', 'vertical_title',])
+                usecols=['username', 'vertical_index', 'basic_type', 'time', 'chapter_title', 'sequential_title', 'vertical_title',])
         else:
             raw_data = pd.read_csv(input_file, delimiter='\t', \
-                usecols=[0, 4, 5, 7, 10], names=['username', 'vertical_index', 'basic_type', 'time', 'vertical_title'], header=None)
+                usecols=[0, 4, 5, 7, 8, 9, 10], names=['username', 'vertical_index', 'basic_type', 'time', 'chapter_title', 'sequential_title', 'vertical_title'], header=None)
 
-        seq_rows = raw_data[raw_data['basic_type'].isin(['seq_goto', 'seq_next', 'seq_prev'])]
-
-        self.pre_index_data = seq_rows.sort_values('time')
+        if write_metadata:
+            write_tb_metadata(course_name, raw_data)
+        
+        self.pre_index_data = raw_data[raw_data['basic_type'].isin(['seq_goto', 'seq_next', 'seq_prev'])].sort_values('time')
         self.current_full_indices = []
         self.current_full_time_spent = []
         print('Done reading pre_index_data.')
 
-    def populate_time_spent_in_pre_index_data(self):
-        return NotImplementedError
-    '''
-    def create_vertical_index_to_title_mapping(self):
-        vertical_index_to_title = {}
-        grouped_by_title = self.pre_index_data.groupby('vertical_title')
-        for title, data in grouped_by_title:
-            if title not in vertical_index_to_title:
-                vertical_index_to_title[title] = str(data.vertical_index.mode())
-        self.vertical_index_to_title = vertical_index_to_title
-    '''
     def create_full_indices_based_on_pre_index_data_ignoring_time_spent(self):
         """
         Fills pre_index_data mapped to indices (list of lists), as well as corresponding list of user ids
@@ -119,37 +113,6 @@ class Vertical_Output(Abstract_Bridge_Between_MOOC_Data_and_Embedding_Indices):
                         previous_element = url
                         data_to_dataframe.append([u, t, url, t_spent])
         temp_df = pd.DataFrame(data_to_dataframe, columns = self.pre_index_data.columns)
-        return temp_df
-
-    def populate_time_spent(self):
-        """
-        Returns a copy of self.pre_index_data with the time_spent column populated with integer between 0 and 3
-        """
-        pre_index_data = self.pre_index_data
-        grouped_by_user = pre_index_data.groupby('username')
-        data_to_append = []
-        for user_id, data in grouped_by_user:
-            new_time_sequence = []
-            timestamps = [process_time(elem) for elem in list(data.time)]
-            for i in range(0, len(timestamps) - 1):
-                current_time = timestamps[i]
-                next_time = timestamps[i+1]
-                second_difference = (next_time - current_time).total_seconds()
-                new_time_sequence.append(second_difference)
-            new_time_sequence.append('endtime')
-
-            i = 0
-            for row in data.iterrows():
-                index = row[0]
-                values = row[1]
-                user = values.user
-                timestamp = timestamps[i]
-                rep = values.unique_representation_of_event
-                time_spent = new_time_sequence[i]
-                data_to_append.append([user, timestamp, rep, time_spent])
-                i+=1
-
-        temp_df = pd.DataFrame(data_to_append, columns = ['user', 'time', 'vertical_index', 'time_spent'])
         return temp_df
 
     def expose_x_y(self, seq_len=256, min_len=3, train_proportion=0.63, val_proportion=0.07):

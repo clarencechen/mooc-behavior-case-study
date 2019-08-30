@@ -5,8 +5,8 @@ from keras import backend as K
 from keras.layers import Input, Softmax, Embedding, Add, Lambda, Dense
 
 from multihot_utils import MultihotEmbedding
-from embedding_utils import TiedOutputLayer
 
+from keras_transformer.extras import TiedOutputLayer
 from keras_transformer.position import TransformerCoordinateEmbedding
 from keras_transformer.transformer import TransformerACT, TransformerBlock
 
@@ -17,7 +17,8 @@ def universal_transformer_gpt_model(
         num_heads: int, transformer_dropout: float = 0.1,
         embedding_dropout: float = 0.6,
         l2_reg_penalty: float = 1e-6,
-        confidence_penalty_weight: float = 0.1):
+        confidence_penalty_weight: float = 0.1,
+        multihot_input: bool = False):
     """
     A model which is similar to the one described by OpenAI in paper
     "Improving Language Understanding by Generative Pre-Training", except
@@ -27,14 +28,24 @@ def universal_transformer_gpt_model(
     word_ids = Input(shape=(max_seq_length,), dtype='int32', name='word_ids')
     l2_regularizer = (regularizers.l2(l2_reg_penalty) if l2_reg_penalty
                       else None)
-    embedding_layer = Embedding(
-        vocabulary_size, word_embedding_size,
-        input_length=max_seq_length,
-        name='token_embeddings',
-        # Regularization is based on paper "A Comparative Study on
-        # Regularization Strategies for Embedding-based Neural Networks"
-        # https://arxiv.org/pdf/1508.03721.pdf
-        embeddings_regularizer=l2_regularizer)
+    if multihot_input:
+        embedding_layer = MultihotEmbedding(
+            vocabulary_size, word_embedding_size,
+            input_length=max_seq_length,
+            name='multihot_embeddings',
+            # Regularization is based on paper "A Comparative Study on
+            # Regularization Strategies for Embedding-based Neural Networks"
+            # https://arxiv.org/pdf/1508.03721.pdf
+            embeddings_regularizer=l2_regularizer)
+    else:
+        embedding_layer = Embedding(
+            vocabulary_size, word_embedding_size,
+            input_length=max_seq_length,
+            name='token_embeddings',
+            # Regularization is based on paper "A Comparative Study on
+            # Regularization Strategies for Embedding-based Neural Networks"
+            # https://arxiv.org/pdf/1508.03721.pdf
+            embeddings_regularizer=l2_regularizer)
     output_layer = TiedOutputLayer(embedding_layer,
         activation='softmax',
         projection_regularizer=l2_regularizer,
@@ -65,10 +76,10 @@ def universal_transformer_gpt_model(
     # Penalty for confidence of the output distribution, as described in
     # "Regularizing Neural Networks by Penalizing Confident
     # Output Distributions" (https://arxiv.org/abs/1701.06548)
-    confidence_penalty = K.mean(
-        confidence_penalty_weight *
-        K.sum(word_predictions * K.log(word_predictions), axis=-1))
-    model.add_loss(confidence_penalty)
+    # confidence_penalty = K.mean(
+    #     confidence_penalty_weight *
+    #     K.sum(word_predictions * K.log(word_predictions), axis=-1))
+    # model.add_loss(confidence_penalty)
     return model
 
 
@@ -79,7 +90,7 @@ def vanilla_transformer_gpt_model(
         embedding_dropout: float = 0.6,
         l2_reg_penalty: float = 1e-6,
         confidence_penalty_weight: float = 0.1,
-        multihot_input = False):
+        multihot_input: bool = False):
     """
     A model which is almost identical to the one described by OpenAI in paper
     "Improving Language Understanding by Generative Pre-Training", except
@@ -96,6 +107,7 @@ def vanilla_transformer_gpt_model(
         embedding_layer = MultihotEmbedding(
             vocabulary_size, word_embedding_size,
             input_length=max_seq_length,
+            mask_zero=True,
             name='multihot_embeddings',
             # Regularization is based on paper "A Comparative Study on
             # Regularization Strategies for Embedding-based Neural Networks"
@@ -105,6 +117,7 @@ def vanilla_transformer_gpt_model(
         embedding_layer = Embedding(
             vocabulary_size, word_embedding_size,
             input_length=max_seq_length,
+            mask_zero=True,
             name='token_embeddings',
             # Regularization is based on paper "A Comparative Study on
             # Regularization Strategies for Embedding-based Neural Networks"
@@ -135,8 +148,8 @@ def vanilla_transformer_gpt_model(
     # Penalty for confidence of the output distribution, as described in
     # "Regularizing Neural Networks by Penalizing Confident
     # Output Distributions" (https://arxiv.org/abs/1701.06548)
-    confidence_penalty = K.mean(
-        confidence_penalty_weight *
-        K.sum(word_predictions * K.log(word_predictions), axis=-1))
-    model.add_loss(confidence_penalty)
+    # confidence_penalty = K.mean(
+    #     confidence_penalty_weight *
+    #     K.sum(word_predictions * K.log(word_predictions), axis=-1))
+    # model.add_loss(confidence_penalty)
     return model

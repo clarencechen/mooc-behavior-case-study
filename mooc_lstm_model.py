@@ -13,10 +13,10 @@ from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM
 from keras.layers.wrappers import TimeDistributed
 
-from embedding_utils import TiedOutputLayer
+from keras_transformer.extras import TiedOutputLayer
+
 from multihot_utils import MultihotEmbedding
 
-import keras.callbacks as callbacks
 import keras.backend as K
 
 from mooc_model import *
@@ -39,6 +39,7 @@ class MOOC_LSTM_Model(MOOC_Model):
                 input_dim=self.model_params['vocab_size'],
                 output_dim=self.model_params['embed_dim'],
                 input_length=self.model_params['seq_len'],
+                mask_zero=True,
                 name='multihot_embeddings',
                 # Regularization is based on paper "A Comparative Study on
                 # Regularization Strategies for Embedding-based Neural Networks"
@@ -49,6 +50,7 @@ class MOOC_LSTM_Model(MOOC_Model):
                 input_dim=self.model_params['vocab_size'],
                 output_dim=self.model_params['embed_dim'],
                 input_length=self.model_params['seq_len'],
+                mask_zero=True,
                 name='token_embeddings',
                 # Regularization is based on paper "A Comparative Study on
                 # Regularization Strategies for Embedding-based Neural Networks"
