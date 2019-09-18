@@ -52,7 +52,7 @@ for i in range(6):
     #Step 3: Build a Keras Transformer Model and train on same data as the LSTM from Step 2.
     print("Now training first Transformer Model for {}:".format(COURSE_NAMES[i]))
     transformer_model = MOOC_Transformer_Model(old_embedding_size, embed_dim=128, seq_len=sequence_max_len, layers=4, \
-        lrate=1e-3, model_load_path=None)
+        lrate=0.0005, model_load_path=None)
     transformer_model.early_stopping_fit(train_x, train_y, val_x, val_y, batch_size=128, \
         use_cosine_lr=False, model_save_path='./weights/transformer_weights_{}'.format(COURSE_NAMES[i]))
     transformer_model.test_set_eval(test_x, test_y, batch_size=128)

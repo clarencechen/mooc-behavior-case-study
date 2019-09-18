@@ -35,10 +35,10 @@ keras.backend.clear_session()
 '''
 #Step 3: Build a Keras Transformer Model and train on same data as the LSTM from Step 2.
 print("Now training Transformer Model for {}:".format(dataset_name))
-transformer_model = MOOC_Transformer_Model(vocab_size, embed_dim=128, seq_len=sequence_len, layers=8, multihot_input=True, \
+transformer_model = MOOC_Transformer_Model(vocab_size, embed_dim=256, seq_len=sequence_len, layers=4, multihot_input=True, \
     lrate=0.0001, model_load_path=None)
 transformer_model.early_stopping_fit(train_x, train_y, val_x, val_y, batch_size=128, \
-    use_cosine_lr=False, model_save_path='./weights/transformer_weights_{}'.format(dataset_name))
+    use_cosine_lr=True, model_save_path='./weights/transformer_weights_{}'.format(dataset_name))
 transformer_model.test_set_eval(test_x, test_y, batch_size=1024)
 transformer_model.extract_embedding_weights('./embeddings/transformer_weights_{}'.format(dataset_name))
 keras.backend.clear_session()
