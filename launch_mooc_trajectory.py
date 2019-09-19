@@ -35,26 +35,26 @@ for i in range(6):
     lstm_model = MOOC_LSTM_Model(old_embedding_size, embed_dim=128, seq_len=sequence_max_len, layers=2, \
         lrate=0.01, model_load_path=None, confidence_penalty_weight=0, use_tied_embedding=False)
     lstm_model.early_stopping_fit(train_x, train_y, val_x, val_y, \
-        model_save_path='./weights/lstm_weights_conf_penalty_{}'.format(COURSE_NAMES[i]))
+        model_save_path='./weights/lstm_conf_penalty/{}.h5'.format(COURSE_NAMES[i]))
     lstm_model.test_set_eval(test_x, test_y, batch_size=64)
-    lstm_model.extract_embedding_weights('./embeddings/lstm_weights_conf_penalty_{}'.format(COURSE_NAMES[i]))
+    lstm_model.extract_embedding_weights('./embeddings/lstm_conf_penalty/{}'.format(COURSE_NAMES[i]))
     keras.backend.clear_session()
 
     print("Now training an LSTM Model with both enhancements for {}:".format(COURSE_NAMES[i]))
     lstm_tied_embeddings = MOOC_LSTM_Model(old_embedding_size, embed_dim=128, seq_len=sequence_max_len, layers=2, \
         lrate=0.01, model_load_path=None, confidence_penalty_weight=0, use_tied_embedding=True)
     lstm_tied_embeddings.early_stopping_fit(train_x, train_y, val_x, val_y, \
-        model_save_path='./weights/lstm_weights_enhanced_{}'.format(COURSE_NAMES[i]))
+        model_save_path='./weights/lstm_enhanced/{}.h5'.format(COURSE_NAMES[i]))
     lstm_tied_embeddings.test_set_eval(test_x, test_y, batch_size=64)
-    lstm_tied_embeddings.extract_embedding_weights('./embeddings/lstm_weights_enhanced_{}'.format(COURSE_NAMES[i]))
+    lstm_tied_embeddings.extract_embedding_weights('./embeddings/lstm_enhanced/{}'.format(COURSE_NAMES[i]))
     keras.backend.clear_session()
     '''
     #Step 3: Build a Keras Transformer Model and train on same data as the LSTM from Step 2.
     print("Now training first Transformer Model for {}:".format(COURSE_NAMES[i]))
-    transformer_model = MOOC_Transformer_Model(old_embedding_size, embed_dim=128, seq_len=sequence_max_len, layers=4, \
+    transformer_model = MOOC_Transformer_Model(old_embedding_size, embed_dim=128, seq_len=sequence_max_len, layers=2, \
         lrate=0.0005, model_load_path=None)
     transformer_model.early_stopping_fit(train_x, train_y, val_x, val_y, batch_size=128, \
-        use_cosine_lr=False, model_save_path='./weights/transformer_weights_{}'.format(COURSE_NAMES[i]))
+        use_cosine_lr=False, model_save_path='./weights/transformer/{}.h5'.format(COURSE_NAMES[i]))
     transformer_model.test_set_eval(test_x, test_y, batch_size=128)
-    transformer_model.extract_embedding_weights('./embeddings/transformer_weights_{}'.format(COURSE_NAMES[i]))
+    transformer_model.extract_embedding_weights('./embeddings/transformer/{}'.format(COURSE_NAMES[i]))
     keras.backend.clear_session()
