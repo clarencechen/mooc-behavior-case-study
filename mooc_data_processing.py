@@ -31,9 +31,9 @@ class Vertical_Output():
     The unique representation of action is what should be converted to indices (for output into embedding layer).
     Outputs X y used to train model, along with vocab_size for keras model.
     """
-    def __init__(self, course_name, has_header, write_metadata=False):
+    def __init__(self, data_dir, course_name, has_header, write_metadata=False):
 
-        input_file = '{}{}_parsed_v2.tsv'.format('../../mooc-data/', course_name)
+        input_file = './{}/{}.tsv'.format(data_dir, course_name)
         if has_header:
             raw_data = pd.read_csv(input_file, delimiter='\t', \
                 usecols=['username', 'vertical_index', 'basic_type', 'time', 'chapter_title', 'sequential_title', 'vertical_title',])

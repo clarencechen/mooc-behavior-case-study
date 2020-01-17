@@ -1,0 +1,3 @@
+[submodule "keras-transformer"]
+	path = keras-transformer
+	url = ../keras-transformer
