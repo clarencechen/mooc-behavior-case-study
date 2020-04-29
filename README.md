@@ -1,4 +1,4 @@
-# dAFM and its variants
+# MOOC Student Course Trajectory Modeling
 
 This is the Python 3 source code for of the MOOC Course Trajectory Modeling paper:
 
